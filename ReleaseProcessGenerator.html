@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Page with Drawing Areas and Tables</title>
+  <style>
+    .drawing-area-container {
+      display: flex;
+      flex-direction: row;
+    }
+    .drawing-area {
+      width: 50%;
+      height: 200px;
+      border: 1px solid black;
+    }
+    table {
+      margin-top: 20px;
+      border-collapse: collapse;
+    }
+    td, th {
+      border: 1px solid black;
+      padding: 5px;
+    }
+    input[type="number"] {
+      width: 100%;
+      box-sizing: border-box;
+    }
+  </style>
+</head>
+<body>
+  <div class="drawing-area-container">
+    <div class="drawing-area"></div>
+    <div class="drawing-area"></div>
+  </div>
+  <table>
+    <tr>
+      <th colspan="3">小浪底</th>
+    </tr>
+    <tr>
+      <td><input type="number"></td>
+      <td><input type="number"></td>
+      <td><input type="number"></td>
+    </tr>
+    <!-- Repeat the above row 10 more times -->
+  </table>
+  <table>
+    <tr>
+      <th colspan="3">三门峡</th>
+    </tr>
+    <tr>
+      <td><input type="number"></td>
+      <td><input type="number"></td>
+      <td><input type="number"></td>
+    </tr>
+    <!-- Repeat the above row 7 more times -->
+  </table>
+</body>
+</html>
