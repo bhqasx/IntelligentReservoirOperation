@@ -31,27 +31,132 @@
     <div class="drawing-area"></div>
     <div class="drawing-area"></div>
   </div>
-  <table>
+  <table class="table1">
     <tr>
       <th colspan="3">小浪底</th>
     </tr>
     <tr>
-      <td><input type="number"></td>
+      <th>序号</th>
+      <th>t</th>
+      <th>Q</th>
+    </tr>
+    <tr>
+      <td><input class="serial-number" type="number"></td>
       <td><input type="number"></td>
       <td><input type="number"></td>
     </tr>
-    <!-- Repeat the above row 10 more times -->
+    <tr>
+      <td><input class="serial-number" type="number"></td>
+      <td><input type="number"></td>
+      <td><input type="number"></td>
+    </tr>
+    <tr>
+      <td><input class="serial-number" type="number"></td>
+      <td><input type="number"></td>
+      <td><input type="number"></td>
+    </tr>
+    <tr>
+      <td><input class="serial-number" type="number"></td>
+      <td><input type="number"></td>
+      <td><input type="number"></td>
+    </tr>
+    <tr>
+      <td><input class="serial-number" type="number"></td>
+      <td><input type="number"></td>
+      <td><input type="number"></td>
+    </tr>
+    <tr>
+      <td><input class="serial-number" type="number"></td>
+      <td><input type="number"></td>
+      <td><input type="number"></td>
+    </tr>
+    <tr>
+      <td><input class="serial-number" type="number"></td>
+      <td><input type="number"></td>
+      <td><input type="number"></td>
+    </tr>
+    <tr>
+      <td><input class="serial-number" type="number"></td>
+      <td><input type="number"></td>
+      <td><input type="number"></td>
+    </tr>
+    <tr>
+      <td><input class="serial-number" type="number"></td>
+      <td><input type="number"></td>
+      <td><input type="number"></td>
+    </tr>
+    <tr>
+      <td><input class="serial-number" type="number"></td>
+      <td><input type="number"></td>
+      <td><input type="number"></td>
+    </tr>
+    <tr>
+      <td><input class="serial-number" type="number"></td>
+      <td><input type="number"></td>
+      <td><input type="number"></td>
+    </tr>
   </table>
-  <table>
+  <table class="table2">
     <tr>
       <th colspan="3">三门峡</th>
     </tr>
     <tr>
-      <td><input type="number"></td>
+      <th>序号</th>
+      <th>t</th>
+      <th>Q</th>
+    </tr>
+    <tr>
+      <td><input class="serial-number" type="number"></td>
       <td><input type="number"></td>
       <td><input type="number"></td>
     </tr>
-    <!-- Repeat the above row 7 more times -->
+    <tr>
+      <td><input class="serial-number" type="number"></td>
+      <td><input type="number"></td>
+      <td><input type="number"></td>
+    </tr>
+    <tr>
+      <td><input class="serial-number" type="number"></td>
+      <td><input type="number"></td>
+      <td><input type="number"></td>
+    </tr>
+    <tr>
+      <td><input class="serial-number" type="number"></td>
+      <td><input type="number"></td>
+      <td><input type="number"></td>
+    </tr>
+    <tr>
+      <td><input class="serial-number" type="number"></td>
+      <td><input type="number"></td>
+      <td><input type="number"></td>
+    </tr>
+    <tr>
+      <td><input class="serial-number" type="number"></td>
+      <td><input type="number"></td>
+      <td><input type="number"></td>
+    </tr>
+    <tr>
+      <td><input class="serial-number" type="number"></td>
+      <td><input type="number"></td>
+      <td><input type="number"></td>
+    </tr>
+    <tr>
+      <td><input class="serial-number" type="number"></td>
+      <td><input type="number"></td>
+      <td><input type="number"></td>
+    </tr>
   </table>
 </body>
+<script>
+  window.onload = function() {
+    var tables = ['table1', 'table2'];
+    for (var t = 0; t < tables.length; t++) {
+      var table = document.getElementsByClassName(tables[t])[0];
+      var inputs = table.getElementsByClassName('serial-number');
+      for (var i = 0; i < inputs.length; i++) {
+        inputs[i].value = i + 1;
+      }
+    }
+  }
+</script>
 </html>
