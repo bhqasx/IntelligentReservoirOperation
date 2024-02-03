@@ -42,58 +42,58 @@
     </tr>
     <tr>
       <td><input class="serial-number" type="number"></td>
-      <td><input type="number"></td>
-      <td><input type="number"></td>
+      <td><input class="input-t" type="number"></td>
+      <td><input class="input-q" type="number"></td>
     </tr>
     <tr>
       <td><input class="serial-number" type="number"></td>
-      <td><input type="number"></td>
-      <td><input type="number"></td>
+      <td><input class="input-t" type="number"></td>
+      <td><input class="input-q" type="number"></td>
     </tr>
     <tr>
       <td><input class="serial-number" type="number"></td>
-      <td><input type="number"></td>
-      <td><input type="number"></td>
+      <td><input class="input-t" type="number"></td>
+      <td><input class="input-q" type="number"></td>
     </tr>
     <tr>
       <td><input class="serial-number" type="number"></td>
-      <td><input type="number"></td>
-      <td><input type="number"></td>
+      <td><input class="input-t" type="number"></td>
+      <td><input class="input-q" type="number"></td>
     </tr>
     <tr>
       <td><input class="serial-number" type="number"></td>
-      <td><input type="number"></td>
-      <td><input type="number"></td>
+      <td><input class="input-t" type="number"></td>
+      <td><input class="input-q" type="number"></td>
     </tr>
     <tr>
       <td><input class="serial-number" type="number"></td>
-      <td><input type="number"></td>
-      <td><input type="number"></td>
+      <td><input class="input-t" type="number"></td>
+      <td><input class="input-q" type="number"></td>
     </tr>
     <tr>
       <td><input class="serial-number" type="number"></td>
-      <td><input type="number"></td>
-      <td><input type="number"></td>
+      <td><input class="input-t" type="number"></td>
+      <td><input class="input-q" type="number"></td>
     </tr>
     <tr>
       <td><input class="serial-number" type="number"></td>
-      <td><input type="number"></td>
-      <td><input type="number"></td>
+      <td><input class="input-t" type="number"></td>
+      <td><input class="input-q" type="number"></td>
     </tr>
     <tr>
       <td><input class="serial-number" type="number"></td>
-      <td><input type="number"></td>
-      <td><input type="number"></td>
+      <td><input class="input-t" type="number"></td>
+      <td><input class="input-q" type="number"></td>
     </tr>
     <tr>
       <td><input class="serial-number" type="number"></td>
-      <td><input type="number"></td>
-      <td><input type="number"></td>
+      <td><input class="input-t" type="number"></td>
+      <td><input class="input-q" type="number"></td>
     </tr>
     <tr>
       <td><input class="serial-number" type="number"></td>
-      <td><input type="number"></td>
-      <td><input type="number"></td>
+      <td><input class="input-t" type="number"></td>
+      <td><input class="input-q" type="number"></td>
     </tr>
   </table>
   <table class="table2">
@@ -107,43 +107,43 @@
     </tr>
     <tr>
       <td><input class="serial-number" type="number"></td>
-      <td><input type="number"></td>
-      <td><input type="number"></td>
+      <td><input class="input-t" type="number"></td>
+      <td><input class="input-q" type="number"></td>
     </tr>
     <tr>
       <td><input class="serial-number" type="number"></td>
-      <td><input type="number"></td>
-      <td><input type="number"></td>
+      <td><input class="input-t" type="number"></td>
+      <td><input class="input-q" type="number"></td>
     </tr>
     <tr>
       <td><input class="serial-number" type="number"></td>
-      <td><input type="number"></td>
-      <td><input type="number"></td>
+      <td><input class="input-t" type="number"></td>
+      <td><input class="input-q" type="number"></td>
     </tr>
     <tr>
       <td><input class="serial-number" type="number"></td>
-      <td><input type="number"></td>
-      <td><input type="number"></td>
+      <td><input class="input-t" type="number"></td>
+      <td><input class="input-q" type="number"></td>
     </tr>
     <tr>
       <td><input class="serial-number" type="number"></td>
-      <td><input type="number"></td>
-      <td><input type="number"></td>
+      <td><input class="input-t" type="number"></td>
+      <td><input class="input-q" type="number"></td>
     </tr>
     <tr>
       <td><input class="serial-number" type="number"></td>
-      <td><input type="number"></td>
-      <td><input type="number"></td>
+      <td><input class="input-t" type="number"></td>
+      <td><input class="input-q" type="number"></td>
     </tr>
     <tr>
       <td><input class="serial-number" type="number"></td>
-      <td><input type="number"></td>
-      <td><input type="number"></td>
+      <td><input class="input-t" type="number"></td>
+      <td><input class="input-q" type="number"></td>
     </tr>
     <tr>
       <td><input class="serial-number" type="number"></td>
-      <td><input type="number"></td>
-      <td><input type="number"></td>
+      <td><input class="input-t" type="number"></td>
+      <td><input class="input-q" type="number"></td>
     </tr>
   </table>
 </body>
@@ -153,9 +153,26 @@
     for (var t = 0; t < tables.length; t++) {
       var table = document.getElementsByClassName(tables[t])[0];
       var inputs = table.getElementsByClassName('serial-number');
+      var inputsT = table.getElementsByClassName('input-t');
+      var inputsQ = table.getElementsByClassName('input-q');
+      var tValues = [], qValues = [];
       for (var i = 0; i < inputs.length; i++) {
         inputs[i].value = i + 1;
+        inputsT[i].addEventListener('input', function () {
+          tValues[i] = this.value;
+          //让输入的值变成红色
+          if (this.value > 100) {
+            this.style.color = 'red';
+          } else {
+            this.style.color = 'black';
+          }
+        });
+        inputsQ[i].addEventListener('input', function () {
+          qValues[i] = this.value;
+        });
       }
+      console.log('t values for table ' + (t + 1) + ':', tValues);
+      console.log('Q values for table ' + (t + 1) + ':', qValues);
     }
   }
 </script>
