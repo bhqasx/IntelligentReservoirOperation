@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <title>Page with Drawing Areas and Tables</title>
   <style>
     .drawing-area-container {
@@ -28,8 +29,8 @@
 </head>
 <body>
   <div class="drawing-area-container">
-    <div class="drawing-area"></div>
-    <div class="drawing-area"></div>
+    <canvas id="chartArea1" class="drawing-area"></canvas>
+    <canvas id="chartArea2" class="drawing-area"></canvas>
   </div>
   <table class="table1">
     <tr>
@@ -149,6 +150,59 @@
 </body>
 <script>
   window.onload = function() {
+  // Fetch the JSON data
+  fetch('Xiaolangdi.json')
+    .then(response => response.json())
+    .then(data => {
+      // Store the data in the XLD object
+      var XLD = data;
+
+      // Get the first chart area
+      var ctx = document.getElementById('chartArea1').getContext('2d');
+
+      // Create the chart
+      new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: XLD.map(item => item.t),
+          datasets: [
+            {
+              label: 'Inflow',
+              data: XLD.map(item => item.inflow),
+              yAxisID: 'y-axis-1',
+            },
+            {
+              label: 'Outflow',
+              data: XLD.map(item => item.outflow),
+              yAxisID: 'y-axis-1',
+            },
+            {
+              label: 'Water Level',
+              data: XLD.map(item => item.waterLevel),
+              yAxisID: 'y-axis-2',
+            }
+          ]
+        },
+        options: {
+          scales: {
+            yAxes: [
+              {
+                id: 'y-axis-1',
+                type: 'linear',
+                position: 'left',
+              },
+              {
+                id: 'y-axis-2',
+                type: 'linear',
+                position: 'right',
+              }
+            ]
+          }
+        }
+      });
+    });
+    
+    //处理表格输入
     var tables = ['table1', 'table2'];
     for (var t = 0; t < tables.length; t++) {
       var table = document.getElementsByClassName(tables[t])[0];
