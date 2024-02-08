@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
+  <meta charset="UTF-8">
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <title>Page with Drawing Areas and Tables</title>
   <style>
@@ -164,21 +165,21 @@
       new Chart(ctx, {
         type: 'line',
         data: {
-          labels: XLD.map(item => item.t),
+          labels: XLD.t,
           datasets: [
             {
               label: 'Inflow',
-              data: XLD.map(item => item.inflow),
+              data: XLD.Inflow,
               yAxisID: 'y-axis-1',
             },
             {
               label: 'Outflow',
-              data: XLD.map(item => item.outflow),
+              data: XLD.Outflow,
               yAxisID: 'y-axis-1',
             },
             {
               label: 'Water Level',
-              data: XLD.map(item => item.waterLevel),
+              data: XLD["Water level"],
               yAxisID: 'y-axis-2',
             }
           ]
