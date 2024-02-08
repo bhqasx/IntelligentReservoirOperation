@@ -8,10 +8,15 @@
     .drawing-area-container {
       display: flex;
       flex-direction: row;
+      width: 60vw;
     }
     .drawing-area {
       width: 50%;
       height: 200px;
+      border: 1px solid black;
+    }
+    #chartArea1, #chartArea2 {
+      width: 50%;
       border: 1px solid black;
     }
     table {
@@ -22,9 +27,14 @@
       border: 1px solid black;
       padding: 5px;
     }
+    input[type="number"]::-webkit-inner-spin-button,
+    input[type="number"]::-webkit-outer-spin-button {
+      -webkit-appearance: none;
+      margin: 0;
+    }
+
     input[type="number"] {
-      width: 100%;
-      box-sizing: border-box;
+      -moz-appearance: textfield;
     }
   </style>
 </head>
@@ -151,7 +161,7 @@
 </body>
 <script>
   window.onload = function() {
-  // Fetch the JSON data
+  // Fetch the JSON data for Xiaolangdi
   fetch('Xiaolangdi.json')
     .then(response => response.json())
     .then(data => {
@@ -185,6 +195,7 @@
           ]
         },
         options: {
+          responsive: true,
           scales: {
             yAxes: [
               {
@@ -203,6 +214,59 @@
       });
     });
     
+    // Fetch the JSON data for Sanmenxia
+    fetch('Sanmenxia.json')
+      .then(response => response.json())
+      .then(data => {
+        // Store the data in the SMX object
+        var SMX = data;
+
+        // Get the second chart area
+        var ctx = document.getElementById('chartArea2').getContext('2d');
+
+        // Create the chart
+        new Chart(ctx, {
+          type: 'line',
+          data: {
+            labels: SMX.t,
+            datasets: [
+              {
+                label: 'Inflow',
+                data: SMX.Inflow,
+                yAxisID: 'y-axis-1',
+              },
+              {
+                label: 'Outflow',
+                data: SMX.Outflow,
+                yAxisID: 'y-axis-1',
+              },
+              {
+                label: 'Water Level',
+                data: SMX["Water level"],
+                yAxisID: 'y-axis-2',
+              }
+            ]
+          },
+          options: {
+            responsive: true,
+            scales: {
+              yAxes: [
+                {
+                  id: 'y-axis-1',
+                  type: 'linear',
+                  position: 'left',
+                },
+                {
+                  id: 'y-axis-2',
+                  type: 'linear',
+                  position: 'right',
+                }
+              ]
+            }
+          }
+        });
+      });
+
     //处理表格输入
     var tables = ['table1', 'table2'];
     for (var t = 0; t < tables.length; t++) {
