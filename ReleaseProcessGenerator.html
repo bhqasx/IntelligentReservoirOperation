@@ -60,7 +60,7 @@
     <tr>
       <td><input class="serial-number" type="number"></td>
       <td><input class="input-t" type="number"></td>
-      <td><input class="input-q" type="number"></td>
+      <td><input class="input-q" type="number" style="background-color: yellow;" readonly></td>
     </tr>
     <tr>
       <td><input class="serial-number" type="number"></td>
@@ -120,7 +120,12 @@
     <tr>
       <td><input class="serial-number" type="number"></td>
       <td><input class="input-t" type="number"></td>
-      <td><input class="input-q" type="number"></td>
+      <td><input class="input-q" type="text" value="Qin"></td>
+    </tr>
+    <tr>
+      <td><input class="serial-number" type="number"></td>
+      <td><input class="input-t" type="number"></td>
+      <td><input class="input-q" type="text" value="Qin"></td>
     </tr>
     <tr>
       <td><input class="serial-number" type="number"></td>
@@ -145,17 +150,12 @@
     <tr>
       <td><input class="serial-number" type="number"></td>
       <td><input class="input-t" type="number"></td>
-      <td><input class="input-q" type="number"></td>
+      <td><input class="input-q" type="text" value="Qin"></td>
     </tr>
     <tr>
       <td><input class="serial-number" type="number"></td>
       <td><input class="input-t" type="number"></td>
-      <td><input class="input-q" type="number"></td>
-    </tr>
-    <tr>
-      <td><input class="serial-number" type="number"></td>
-      <td><input class="input-t" type="number"></td>
-      <td><input class="input-q" type="number"></td>
+      <td><input class="input-q" type="text" value="Qin"></td>
     </tr>
   </table>
 </body>
@@ -269,16 +269,23 @@
 
     //处理表格输入
     var tables = ['table1', 'table2'];
+    var XLD_t = [], XLD_q = [], SMX_t = [], SMX_q = [];
+
     for (var t = 0; t < tables.length; t++) {
       var table = document.getElementsByClassName(tables[t])[0];
       var inputs = table.getElementsByClassName('serial-number');
       var inputsT = table.getElementsByClassName('input-t');
       var inputsQ = table.getElementsByClassName('input-q');
-      var tValues = [], qValues = [];
+
       for (var i = 0; i < inputs.length; i++) {
         inputs[i].value = i + 1;
+        (function(i) {
         inputsT[i].addEventListener('input', function () {
-          tValues[i] = this.value;
+          if (tables[t] === 'table1') {
+            XLD_t[i] = this.value;
+          } else {
+            SMX_t[i] = this.value;
+          }
           //让输入的值变成红色
           if (this.value > 100) {
             this.style.color = 'red';
@@ -287,11 +294,25 @@
           }
         });
         inputsQ[i].addEventListener('input', function () {
-          qValues[i] = this.value;
+          if (isNaN(this.value)) {
+            if (tables[t] === 'table1') {
+              XLD_q[i] = NaN;
+            } else {
+              SMX_q[i] = NaN;
+            }
+          } else {
+            if (tables[t] === 'table1') {
+              XLD_q[i] = this.value;
+            } else {
+              SMX_q[i] = this.value;
+            }
+          }
         });
+      })(i);
       }
-      console.log('t values for table ' + (t + 1) + ':', tValues);
-      console.log('Q values for table ' + (t + 1) + ':', qValues);
+
+      console.log('t values for table ' + (t + 1) + ':', tables[t] === 'table1' ? XLD_t : SMX_t);
+      console.log('Q values for table ' + (t + 1) + ':', tables[t] === 'table1' ? XLD_q : SMX_q);
     }
   }
 </script>
