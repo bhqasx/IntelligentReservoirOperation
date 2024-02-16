@@ -162,6 +162,7 @@
 </body>
 <script>
   var XLD_t = [], XLD_q = [], SMX_t = [], SMX_q = [];
+  var XLD = {};
 
   window.onload = function() {
   // Fetch the JSON data for Xiaolangdi
@@ -169,7 +170,7 @@
     .then(response => response.json())
     .then(data => {
       // Store the data in the XLD object
-      var XLD = data;
+      XLD = data;
 
       // Get the first chart area
       var ctx = document.getElementById('chartArea1').getContext('2d');
