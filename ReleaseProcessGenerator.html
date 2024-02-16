@@ -64,13 +64,13 @@
     </tr>
     <tr>
       <td><input class="serial-number" type="number"></td>
-      <td><input class="input-t" type="number"></td>
+      <td><input class="input-t" type="number" style="background-color: yellow;" readonly></td>
       <td><input class="input-q" type="number"></td>
     </tr>
     <tr>
       <td><input class="serial-number" type="number"></td>
       <td><input class="input-t" type="number"></td>
-      <td><input class="input-q" type="number"></td>
+      <td><input class="input-q" type="number" style="background-color: yellow;" readonly></td>
     </tr>
     <tr>
       <td><input class="serial-number" type="number"></td>
@@ -158,8 +158,11 @@
       <td><input class="input-q" type="text" value="Qin"></td>
     </tr>
   </table>
+  <button id="save">保存</button>
 </body>
 <script>
+  var XLD_t = [], XLD_q = [], SMX_t = [], SMX_q = [];
+
   window.onload = function() {
   // Fetch the JSON data for Xiaolangdi
   fetch('Xiaolangdi.json')
@@ -269,7 +272,6 @@
 
     //处理表格输入
     var tables = ['table1', 'table2'];
-    var XLD_t = [], XLD_q = [], SMX_t = [], SMX_q = [];
 
     for (var t = 0; t < tables.length; t++) {
       var table = document.getElementsByClassName(tables[t])[0];
@@ -279,18 +281,12 @@
 
       for (var i = 0; i < inputs.length; i++) {
         inputs[i].value = i + 1;
-        (function(i) {
+        (function(i, t) {
         inputsT[i].addEventListener('input', function () {
           if (tables[t] === 'table1') {
             XLD_t[i] = this.value;
           } else {
             SMX_t[i] = this.value;
-          }
-          //让输入的值变成红色
-          if (this.value > 100) {
-            this.style.color = 'red';
-          } else {
-            this.style.color = 'black';
           }
         });
         inputsQ[i].addEventListener('input', function () {
@@ -308,12 +304,59 @@
             }
           }
         });
-      })(i);
+      })(i, t);
       }
-
       console.log('t values for table ' + (t + 1) + ':', tables[t] === 'table1' ? XLD_t : SMX_t);
       console.log('Q values for table ' + (t + 1) + ':', tables[t] === 'table1' ? XLD_q : SMX_q);
     }
+    //另table1的第二行的Q和第一行的Q相等，这两个单元格显示的值也相同
+    var tablel = document.getElementsByClassName('table1')[0];
+    var inputsQ = tablel.getElementsByClassName('input-q');
+    var inputsT = tablel.getElementsByClassName('input-t');
+    inputsQ[0].addEventListener('input', function () {
+      if (this.value !== '') {
+        inputsQ[1].value = this.value;
+        XLD_q[1] = this.value;
+      }
+    });
+
+    inputsQ[2].addEventListener('input', function () {
+      if (this.value !== '') {
+        inputsQ[3].value = this.value;
+        XLD_q[4] = this.value;
+      }
+    });
+
+    inputsT[1].addEventListener('input', function () {
+      if (this.value !== '') {
+        inputsT[2].value = Number(this.value) + 60;
+        XLD_t[2] = this.value + 60;
+      }
+    });
   }
+
+  //保存按钮
+    document.getElementById('save').addEventListener('click', function () {
+      var XLD_keypoints = {
+        t: XLD_t,
+        q: XLD_q
+      };
+      var SMX_keypoints = {
+        t: SMX_t,
+        q: SMX_q
+      };
+
+      saveToFile(XLD_keypoints, 'XLD_keypoints.json');
+      saveToFile(SMX_keypoints, 'SMX_keypoints.json');
+    });
+
+    function saveToFile(data, filename) {
+      var blob = new Blob([JSON.stringify(data)], { type: 'application/json' });
+      var url = URL.createObjectURL(blob);
+      var a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      a.click();
+    }
 </script>
 </html>
