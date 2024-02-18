@@ -5,6 +5,10 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <title>Page with Drawing Areas and Tables</title>
   <style>
+    .container {
+      display: flex;
+      align-items: center;
+    }
     .drawing-area-container {
       display: flex;
       flex-direction: row;
@@ -21,6 +25,7 @@
     }
     table {
       margin-top: 20px;
+      margin-right: 50px;
       border-collapse: collapse;
     }
     td, th {
@@ -43,135 +48,156 @@
     <canvas id="chartArea1" class="drawing-area"></canvas>
     <canvas id="chartArea2" class="drawing-area"></canvas>
   </div>
-  <table class="table1">
-    <tr>
-      <th colspan="3">小浪底</th>
-    </tr>
-    <tr>
-      <th>序号</th>
-      <th>t</th>
-      <th>Q</th>
-    </tr>
-    <tr>
-      <td><input class="serial-number" type="number"></td>
-      <td><input class="input-t" type="number"></td>
-      <td><input class="input-q" type="number"></td>
-    </tr>
-    <tr>
-      <td><input class="serial-number" type="number"></td>
-      <td><input class="input-t" type="number"></td>
-      <td><input class="input-q" type="number" style="background-color: yellow;" readonly></td>
-    </tr>
-    <tr>
-      <td><input class="serial-number" type="number"></td>
-      <td><input class="input-t" type="number" style="background-color: yellow;" readonly></td>
-      <td><input class="input-q" type="number"></td>
-    </tr>
-    <tr>
-      <td><input class="serial-number" type="number"></td>
-      <td><input class="input-t" type="number"></td>
-      <td><input class="input-q" type="number" style="background-color: yellow;" readonly></td>
-    </tr>
-    <tr>
-      <td><input class="serial-number" type="number"></td>
-      <td><input class="input-t" type="number"></td>
-      <td><input class="input-q" type="number"></td>
-    </tr>
-    <tr>
-      <td><input class="serial-number" type="number"></td>
-      <td><input class="input-t" type="number"></td>
-      <td><input class="input-q" type="number"></td>
-    </tr>
-    <tr>
-      <td><input class="serial-number" type="number"></td>
-      <td><input class="input-t" type="number"></td>
-      <td><input class="input-q" type="number"></td>
-    </tr>
-    <tr>
-      <td><input class="serial-number" type="number"></td>
-      <td><input class="input-t" type="number"></td>
-      <td><input class="input-q" type="number"></td>
-    </tr>
-    <tr>
-      <td><input class="serial-number" type="number"></td>
-      <td><input class="input-t" type="number"></td>
-      <td><input class="input-q" type="number"></td>
-    </tr>
-    <tr>
-      <td><input class="serial-number" type="number"></td>
-      <td><input class="input-t" type="number"></td>
-      <td><input class="input-q" type="number"></td>
-    </tr>
-    <tr>
-      <td><input class="serial-number" type="number"></td>
-      <td><input class="input-t" type="number"></td>
-      <td><input class="input-q" type="number"></td>
-    </tr>
-  </table>
-  <table class="table2">
-    <tr>
-      <th colspan="3">三门峡</th>
-    </tr>
-    <tr>
-      <th>序号</th>
-      <th>t</th>
-      <th>Q</th>
-    </tr>
-    <tr>
-      <td><input class="serial-number" type="number"></td>
-      <td><input class="input-t" type="number"></td>
-      <td><input class="input-q" type="text" value="Qin"></td>
-    </tr>
-    <tr>
-      <td><input class="serial-number" type="number"></td>
-      <td><input class="input-t" type="number"></td>
-      <td><input class="input-q" type="text" value="Qin"></td>
-    </tr>
-    <tr>
-      <td><input class="serial-number" type="number"></td>
-      <td><input class="input-t" type="number"></td>
-      <td><input class="input-q" type="number"></td>
-    </tr>
-    <tr>
-      <td><input class="serial-number" type="number"></td>
-      <td><input class="input-t" type="number"></td>
-      <td><input class="input-q" type="number"></td>
-    </tr>
-    <tr>
-      <td><input class="serial-number" type="number"></td>
-      <td><input class="input-t" type="number"></td>
-      <td><input class="input-q" type="number"></td>
-    </tr>
-    <tr>
-      <td><input class="serial-number" type="number"></td>
-      <td><input class="input-t" type="number"></td>
-      <td><input class="input-q" type="number"></td>
-    </tr>
-    <tr>
-      <td><input class="serial-number" type="number"></td>
-      <td><input class="input-t" type="number"></td>
-      <td><input class="input-q" type="text" value="Qin"></td>
-    </tr>
-    <tr>
-      <td><input class="serial-number" type="number"></td>
-      <td><input class="input-t" type="number"></td>
-      <td><input class="input-q" type="text" value="Qin"></td>
-    </tr>
-  </table>
+  <div class="container">
+    <div>
+      <div>小浪底汛限水位</div>
+      <div style="display: flex; align-items: center;">
+        <input id="WL-FloodControl" type="number">
+        <p style="margin-left: 10px;">(m)</p>
+      </div>
+    </div>
+    <table class="table1">
+      <tr>
+        <th colspan="3">小浪底</th>
+      </tr>
+      <tr>
+        <th>序号</th>
+        <th>t</th>
+        <th>Q</th>
+      </tr>
+      <tr>
+        <td><input class="serial-number" type="number"></td>
+        <td><input class="input-t" type="number"></td>
+        <td><input class="input-q" type="number"></td>
+      </tr>
+      <tr>
+        <td><input class="serial-number" type="number"></td>
+        <td><input class="input-t" type="number"></td>
+        <td><input class="input-q" type="number" style="background-color: yellow;" readonly></td>
+      </tr>
+      <tr>
+        <td><input class="serial-number" type="number"></td>
+        <td><input class="input-t" type="number" style="background-color: yellow;" readonly></td>
+        <td><input class="input-q" type="number"></td>
+      </tr>
+      <tr>
+        <td><input class="serial-number" type="number"></td>
+        <td><input class="input-t" type="number"></td>
+        <td><input class="input-q" type="number" style="background-color: yellow;" readonly></td>
+      </tr>
+      <tr>
+        <td><input class="serial-number" type="number"></td>
+        <td><input class="input-t" type="number"></td>
+        <td><input class="input-q" type="number"></td>
+      </tr>
+      <tr>
+        <td><input class="serial-number" type="number"></td>
+        <td><input class="input-t" type="number"></td>
+        <td><input class="input-q" type="number"></td>
+      </tr>
+      <tr>
+        <td><input class="serial-number" type="number"></td>
+        <td><input class="input-t" type="number"></td>
+        <td><input class="input-q" type="number"></td>
+      </tr>
+      <tr>
+        <td><input class="serial-number" type="number"></td>
+        <td><input class="input-t" type="number"></td>
+        <td><input class="input-q" type="number"></td>
+      </tr>
+      <tr>
+        <td><input class="serial-number" type="number"></td>
+        <td><input class="input-t" type="number"></td>
+        <td><input class="input-q" type="number"></td>
+      </tr>
+      <tr>
+        <td><input class="serial-number" type="number"></td>
+        <td><input class="input-t" type="number"></td>
+        <td><input class="input-q" type="number"></td>
+      </tr>
+      <tr>
+        <td><input class="serial-number" type="number"></td>
+        <td><input class="input-t" type="number"></td>
+        <td><input class="input-q" type="number"></td>
+      </tr>
+    </table>
+    <table class="table2">
+      <tr>
+        <th colspan="3">三门峡</th>
+      </tr>
+      <tr>
+        <th>序号</th>
+        <th>t</th>
+        <th>Q</th>
+      </tr>
+      <tr>
+        <td><input class="serial-number" type="number"></td>
+        <td><input class="input-t" type="number"></td>
+        <td><input class="input-q" type="text" value="Qin"></td>
+      </tr>
+      <tr>
+        <td><input class="serial-number" type="number"></td>
+        <td><input class="input-t" type="number"></td>
+        <td><input class="input-q" type="text" value="Qin"></td>
+      </tr>
+      <tr>
+        <td><input class="serial-number" type="number"></td>
+        <td><input class="input-t" type="number"></td>
+        <td><input class="input-q" type="number"></td>
+      </tr>
+      <tr>
+        <td><input class="serial-number" type="number"></td>
+        <td><input class="input-t" type="number"></td>
+        <td><input class="input-q" type="number"></td>
+      </tr>
+      <tr>
+        <td><input class="serial-number" type="number"></td>
+        <td><input class="input-t" type="number"></td>
+        <td><input class="input-q" type="number"></td>
+      </tr>
+      <tr>
+        <td><input class="serial-number" type="number"></td>
+        <td><input class="input-t" type="number"></td>
+        <td><input class="input-q" type="number"></td>
+      </tr>
+      <tr>
+        <td><input class="serial-number" type="number"></td>
+        <td><input class="input-t" type="number"></td>
+        <td><input class="input-q" type="text" value="Qin"></td>
+      </tr>
+      <tr>
+        <td><input class="serial-number" type="number"></td>
+        <td><input class="input-t" type="number"></td>
+        <td><input class="input-q" type="text" value="Qin"></td>
+      </tr>
+    </table>
+  </div>
   <button id="save">保存</button>
 </body>
 <script>
   var XLD_t = [], XLD_q = [], SMX_t = [], SMX_q = [];
   var XLD = {};
+  var SMX = {};
+  //定义一个函数，该函数接收xx,yy两个数组和x一个数值，返回y,首先找到xx中距离x最近的两个数，然后用这两个数对应的yy值进行线性插值
+  function interpolate(xx, yy, x) {
+    var i = 0;
+    while (xx[i] < x) {
+      i++;
+    }
+    var x1 = xx[i - 1];
+    var x2 = xx[i];
+    var y1 = yy[i - 1];
+    var y2 = yy[i];
+    return y1 + (y2 - y1) * (x - x1) / (x2 - x1);
+  }
+
 
   window.onload = function() {
   // Fetch the JSON data for Xiaolangdi
   fetch('Xiaolangdi.json')
     .then(response => response.json())
     .then(data => {
-      // Store the data in the XLD object
       XLD = data;
-
       // Get the first chart area
       var ctx = document.getElementById('chartArea1').getContext('2d');
 
@@ -222,9 +248,7 @@
     fetch('Sanmenxia.json')
       .then(response => response.json())
       .then(data => {
-        // Store the data in the SMX object
-        var SMX = data;
-
+        SMX = data;
         // Get the second chart area
         var ctx = document.getElementById('chartArea2').getContext('2d');
 
@@ -328,10 +352,19 @@
       }
     });
 
+    //table1的第二行的t输入后，第三和第四行的t自动计算
     inputsT[1].addEventListener('input', function () {
       if (this.value !== '') {
         inputsT[2].value = Number(this.value) + 60;
         XLD_t[2] = this.value + 60;
+
+        //计算现有水量
+        var xx = XLD.CapCurve.WL;
+        var yy = XLD.CapCurve.Vol;
+        var x = XLD["Water level"][0];
+        //调用interpolate函数
+        var VolIni = interpolate(xx, yy, x);
+        console.log('Volume:', VolIni);
       }
     });
   }
