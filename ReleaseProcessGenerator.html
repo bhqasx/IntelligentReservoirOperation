@@ -191,6 +191,12 @@
     return y1 + (y2 - y1) * (x - x1) / (x2 - x1);
   }
 
+  //定义一个名为CalculateT的函数，计算达到指定净出流水量所需的时间
+  function CalculateT(volTarg, tt, qq) {
+    var t = 0;
+    
+    return t;
+  }
 
   window.onload = function() {
   // Fetch the JSON data for Xiaolangdi
@@ -362,9 +368,19 @@
         var xx = XLD.CapCurve.WL;
         var yy = XLD.CapCurve.Vol;
         var x = XLD["Water level"][0];
-        //调用interpolate函数
-        var VolIni = interpolate(xx, yy, x);
-        console.log('Volume:', VolIni);
+        var VolIni = interpolate(xx, yy, x);      //调用interpolate函数
+        //读取id为WL-FloodControl的input的值
+        var WlFldContr_XLD = document.getElementById('WL-FloodControl').value;
+        //如果是空值，提醒用户输入小浪底汛限水位
+        if (WlFldContr_XLD === '') {
+          alert('请输入小浪底汛限水位');
+        } else {
+          //计算对应的水量
+          var Vol_FldContr = interpolate(xx, yy, WlFldContr_XLD);
+          console.log('Volume:', Vol_FldContr);
+          var netOutflowVol = VolIni - Vol_FldContr;     //净流出水量
+
+        }
       }
     });
   }
