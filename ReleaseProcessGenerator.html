@@ -192,10 +192,50 @@
   }
 
   //定义一个名为CalculateT的函数，计算达到指定净出流水量所需的时间
-  function CalculateT(volTarg, tt, qq) {
-    var t = 0;
+  function CalculateT(volTarg, tt, qq, iLastKeyP, iReservoir) {
+    var t2 = 0;
+    if (iReservoir === 1){
+      var t1 = XLD_t[iLastKeyP-1];
+      //-------假设两个tt之间的qq是线性变化，计算tt[0]时刻到t1时刻XLD的入库水量------
+      //找到t1之前tt中最近的时间的下标
+      var i = 0;
+      while (tt[i] < t1) {
+        i++;
+      }
+      //从tt[0]到tt[i-1]对qq积分
+      var vol = 0;
+      for (var j = 0; j < i-1; j++) {
+        vol -= (tt[j+1] - tt[j]) * (qq[j+1] + qq[j]) / 2;
+      }
+      //插值得到t1时刻的qq
+      var q1 = interpolate(tt, qq, t1);
+      //vol加上从tt[i-1]到t1的qq积分
+      vol -= (t1 - tt[i-1]) * (q1 + qq[i-1]) / 2;
+      //vol = vol*3600;
+      //-------------------------------------------------------------------------
+
+      for (var j = 0; j < iLastKeyP - 1; j++) {
+        for (var j = 0; j < iLastKeyP - 1; j++) {
+          vol += (XLD_t[j+1] - XLD_t[j]) * (XLD_q[j+1] + XLD_q[j]) / 2;
+        }
+      }
+      t2 = t1;
+      var q2 = q1;
+      var dt = 12;
+      while ((vol *3600 /10 ** 8) < volTarg) {
+        t2 = t2 + dt;
+        q2 = interpolate(tt, qq, t2);
+        vol -= dt * (q2 + q1) / 2;
+        vol += dt * XLD_q[iLastKeyP-1];
+        t1 = t2;
+        q1 = q2;
+        console.log('vol:', vol * 3600 / 10 ** 8);
+      }
+    } else {
+      var t1 = SMX_t[iLastKeyP-1];
+    }
     
-    return t;
+    return t2;
   }
 
   window.onload = function() {
@@ -315,9 +355,9 @@
         (function(i, t) {
         inputsT[i].addEventListener('input', function () {
           if (tables[t] === 'table1') {
-            XLD_t[i] = this.value;
+            XLD_t[i] = Number(this.value);
           } else {
-            SMX_t[i] = this.value;
+            SMX_t[i] = Number(this.value);
           }
         });
         inputsQ[i].addEventListener('input', function () {
@@ -329,16 +369,16 @@
             }
           } else {
             if (tables[t] === 'table1') {
-              XLD_q[i] = this.value;
+              XLD_q[i] = Number(this.value);
             } else {
-              SMX_q[i] = this.value;
+              SMX_q[i] = Number(this.value);
             }
           }
         });
       })(i, t);
       }
-      console.log('t values for table ' + (t + 1) + ':', tables[t] === 'table1' ? XLD_t : SMX_t);
-      console.log('Q values for table ' + (t + 1) + ':', tables[t] === 'table1' ? XLD_q : SMX_q);
+      //console.log('t values for table ' + (t + 1) + ':', tables[t] === 'table1' ? XLD_t : SMX_t);
+      //console.log('Q values for table ' + (t + 1) + ':', tables[t] === 'table1' ? XLD_q : SMX_q);
     }
     //另table1的第二行的Q和第一行的Q相等，这两个单元格显示的值也相同
     var tablel = document.getElementsByClassName('table1')[0];
@@ -347,22 +387,14 @@
     inputsQ[0].addEventListener('input', function () {
       if (this.value !== '') {
         inputsQ[1].value = this.value;
-        XLD_q[1] = this.value;
+        XLD_q[1] = Number(this.value);
       }
     });
 
-    inputsQ[2].addEventListener('input', function () {
+    inputsQ[2].addEventListener('blur', function () {
       if (this.value !== '') {
         inputsQ[3].value = this.value;
-        XLD_q[4] = this.value;
-      }
-    });
-
-    //table1的第二行的t输入后，第三和第四行的t自动计算
-    inputsT[1].addEventListener('input', function () {
-      if (this.value !== '') {
-        inputsT[2].value = Number(this.value) + 60;
-        XLD_t[2] = this.value + 60;
+        XLD_q[3] = Number(this.value);
 
         //计算现有水量
         var xx = XLD.CapCurve.WL;
@@ -377,10 +409,19 @@
         } else {
           //计算对应的水量
           var Vol_FldContr = interpolate(xx, yy, WlFldContr_XLD);
-          console.log('Volume:', Vol_FldContr);
+          console.log('Volume FloodControl:', Vol_FldContr);
           var netOutflowVol = VolIni - Vol_FldContr;     //净流出水量
-
+          console.log('Net Outflow Volume:', netOutflowVol);
+          inputsT[3].value = CalculateT(netOutflowVol, XLD.t, XLD.Inflow, 3, 1);
         }
+      }
+    });
+
+    //table1的第二行的t输入后，第三和第四行的t自动计算
+    inputsT[1].addEventListener('blur', function () {
+      if (this.value !== '') {
+        inputsT[2].value = Number(this.value) + 60;
+        XLD_t[2] = Number(this.value) + 60;
       }
     });
   }
