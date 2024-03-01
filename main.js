@@ -271,6 +271,11 @@ fetch('Xiaolangdi.json')
         this.title = '下游不淤流量';
     });
 
+    //鼠标悬停在inputsT[4]上时间，显示一个提示
+    inputsT[4].addEventListener('mouseover', function () {
+        this.title = '达到对接水位的时刻';
+    });
+
     //table1的第二行的t输入后，第三和第四行的t自动计算
     inputsT[1].addEventListener('blur', function () {
         if (this.value !== '') {
