@@ -1,6 +1,32 @@
 var XLD_t = [], XLD_q = [], SMX_t = [], SMX_q = [];
 var XLD = {};
 var SMX = {};
+
+// 获取所有的输入框
+const inputs = document.querySelectorAll('input[type="number"]');
+
+inputs.forEach(input => {
+    if (input.id) {
+        // 当输入框的值改变时，把新的值存储到localStorage
+        input.addEventListener('change', function () {
+            localStorage.setItem(this.id, this.value);
+        });
+
+        // 当光标移动到输入框内时，从localStorage获取上次输入的值，并显示一个提示
+        input.addEventListener('focus', function () {
+            const lastValue = localStorage.getItem(this.id);
+            if (lastValue) {
+                this.placeholder = `${lastValue}`;
+            }
+        });
+
+        // 当输入框失去焦点时，清空placeholder的值
+        input.addEventListener('blur', function () {
+            this.placeholder = '';
+        });
+    }
+});
+
 //定义一个函数，该函数接收xx,yy两个数组和x一个数值，返回y,首先找到xx中距离x最近的两个数，然后用这两个数对应的yy值进行线性插值
 function interpolate(xx, yy, x) {
   var i = 0;
