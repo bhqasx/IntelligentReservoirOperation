@@ -3,9 +3,9 @@ var XLD = {};
 var SMX = {};
 
 // 获取所有的输入框
-const inputs = document.querySelectorAll('input[type="number"]');
+const inputs_all = document.querySelectorAll('input[type="number"]');
 
-inputs.forEach(input => {
+inputs_all.forEach(input => {
     if (input.id) {
         // 当输入框的值改变时，把新的值存储到localStorage
         input.addEventListener('change', function () {
@@ -230,49 +230,54 @@ fetch('Xiaolangdi.json')
     //console.log('Q values for table ' + (t + 1) + ':', tables[t] === 'table1' ? XLD_q : SMX_q);
   }
   //另table1的第二行的Q和第一行的Q相等，这两个单元格显示的值也相同
-  var tablel = document.getElementsByClassName('table1')[0];
-  var inputsQ = tablel.getElementsByClassName('input-q');
-  var inputsT = tablel.getElementsByClassName('input-t');
-  inputsQ[0].addEventListener('input', function () {
-    if (this.value !== '') {
-      inputsQ[1].value = this.value;
-      XLD_q[1] = Number(this.value);
-    }
-  });
+    var tablel = document.getElementsByClassName('table1')[0];
+    var inputsQ = tablel.getElementsByClassName('input-q');
+    var inputsT = tablel.getElementsByClassName('input-t');
+    inputsQ[0].addEventListener('input', function () {
+        if (this.value !== '') {
+            inputsQ[1].value = this.value;
+            XLD_q[1] = Number(this.value);
+        }
+    });
 
-  inputsQ[2].addEventListener('blur', function () {
-    if (this.value !== '') {
-      inputsQ[3].value = this.value;
-      XLD_q[3] = Number(this.value);
+    inputsQ[2].addEventListener('blur', function () {
+        if (this.value !== '') {
+            inputsQ[3].value = this.value;
+            XLD_q[3] = Number(this.value);
 
-      //计算现有水量
-      var xx = XLD.CapCurve.WL;
-      var yy = XLD.CapCurve.Vol;
-      var x = XLD["Water level"][0];
-      var VolIni = interpolate(xx, yy, x);      //调用interpolate函数
-      //读取id为WL-FloodControl的input的值
-      var WlFldContr_XLD = document.getElementById('WL-FloodControl').value;
-      //如果是空值，提醒用户输入小浪底汛限水位
-      if (WlFldContr_XLD === '') {
-        alert('请输入小浪底汛限水位');
-      } else {
-        //计算对应的水量
-        var Vol_FldContr = interpolate(xx, yy, WlFldContr_XLD);
-        console.log('Volume FloodControl:', Vol_FldContr);
-        var netOutflowVol = VolIni - Vol_FldContr;     //净流出水量
-        console.log('Net Outflow Volume:', netOutflowVol);
-        inputsT[3].value = CalculateT(netOutflowVol, XLD.t, XLD.Inflow, 3, 1);
-      }
-    }
-  });
+            //计算现有水量
+            var xx = XLD.CapCurve.WL;
+            var yy = XLD.CapCurve.Vol;
+            var x = XLD["Water level"][0];
+            var VolIni = interpolate(xx, yy, x);      //调用interpolate函数
+            //读取id为WL-FloodControl的input的值
+            var WlFldContr_XLD = document.getElementById('WL-FloodControl').value;
+            //如果是空值，提醒用户输入小浪底汛限水位
+            if (WlFldContr_XLD === '') {
+                alert('请输入小浪底汛限水位');
+            } else {
+                //计算对应的水量
+                var Vol_FldContr = interpolate(xx, yy, WlFldContr_XLD);
+                console.log('Volume FloodControl:', Vol_FldContr);
+                var netOutflowVol = VolIni - Vol_FldContr;     //净流出水量
+                console.log('Net Outflow Volume:', netOutflowVol);
+                inputsT[3].value = CalculateT(netOutflowVol, XLD.t, XLD.Inflow, 3, 1);
+            }
+        }
+    });
 
-  //table1的第二行的t输入后，第三和第四行的t自动计算
-  inputsT[1].addEventListener('blur', function () {
-    if (this.value !== '') {
-      inputsT[2].value = Number(this.value) + 60;
-      XLD_t[2] = Number(this.value) + 60;
-    }
-  });
+    //鼠标悬停在inputsQ[4]上时间，显示一个提示
+    inputsQ[4].addEventListener('mouseover', function () {
+        this.title = '下游不淤流量';
+    });
+
+    //table1的第二行的t输入后，第三和第四行的t自动计算
+    inputsT[1].addEventListener('blur', function () {
+        if (this.value !== '') {
+            inputsT[2].value = Number(this.value) + 60;
+            XLD_t[2] = Number(this.value) + 60;
+        }
+    });
 }
 
 //保存按钮
