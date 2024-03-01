@@ -10,8 +10,8 @@
             "type": "chrome",
             "request": "launch",
             "name": "Open ReleaseProcessGenerator.html",
-            "url": "http://localhost:8000",
-            "webRoot": "${D:/IntelligentReservoirOperation}",
+            "url": "http://localhost:8000/ReleaseProcessGenerator.html",
+            "webRoot": "${workspaceFolder}"
         }
     ]
 }
