@@ -88,6 +88,11 @@ function CalculateT(volTarg, tt, qq, iLastKeyP, iReservoir, dischargeMod) {
             }
             else {
                 //线性变化至当前调控流量
+                var dVol = (t2 - XLD_t[iLastKeyP - 1]) * (XLD_q[iLastKeyP - 1] + XLD_q[iLastKeyP]) / 2;
+                if ((vol + dVol) * 3600 / 10 ** 8 > volTarg) {
+                    stop_flag = 1;
+                }
+                console.log('vol:', (vol + dVol) * 3600 / 10 ** 8);
             }
         }
     } else {
@@ -238,6 +243,7 @@ fetch('Xiaolangdi.json')
     //console.log('t values for table ' + (t + 1) + ':', tables[t] === 'table1' ? XLD_t : SMX_t);
     //console.log('Q values for table ' + (t + 1) + ':', tables[t] === 'table1' ? XLD_q : SMX_q);
   }
+
   //另table1的第二行的Q和第一行的Q相等，这两个单元格显示的值也相同
     var tablel = document.getElementsByClassName('table1')[0];
     var inputsQ = tablel.getElementsByClassName('input-q');
@@ -267,10 +273,9 @@ fetch('Xiaolangdi.json')
             } else {
                 //计算对应的水量
                 var Vol_FldContr = interpolate(xx, yy, WlFldContr_XLD);
-                console.log('Volume FloodControl:', Vol_FldContr);
                 var netOutflowVol = VolIni - Vol_FldContr;     //净流出水量
-                console.log('Net Outflow Volume:', netOutflowVol);
                 inputsT[3].value = CalculateT(netOutflowVol, XLD.t, XLD.Inflow, 3, 1, 1);
+                XLD_t[3] = Number(inputsT[3].value);
             }
         }
     });
@@ -285,7 +290,14 @@ fetch('Xiaolangdi.json')
             if (WlReg_XLD === '') {
                 alert('请输入小浪底对接水位');
             } else {
-                
+                var xx = XLD.CapCurve.WL;
+                var yy = XLD.CapCurve.Vol;
+                var x = XLD["Water level"][0];
+                var VolIni = interpolate(xx, yy, x);      //调用interpolate函数                
+                var Vol_StartReg = interpolate(xx, yy, WlReg_XLD);
+                var netOutflowVol = VolIni - Vol_StartReg;     //净流出水量
+                inputsT[4].value = CalculateT(netOutflowVol, XLD.t, XLD.Inflow, 4, 1, 2);
+                XLD_t[4] = Number(inputsT[4].value);
             }
         }
     });    
