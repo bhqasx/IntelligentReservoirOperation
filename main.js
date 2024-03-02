@@ -41,49 +41,58 @@ function interpolate(xx, yy, x) {
 }
 
 //定义一个名为CalculateT的函数，计算达到指定净出流水量所需的时间
-function CalculateT(volTarg, tt, qq, iLastKeyP, iReservoir) {
+function CalculateT(volTarg, tt, qq, iLastKeyP, iReservoir, dischargeMod) {
   var t2 = 0;
-  if (iReservoir === 1){
-    var t1 = XLD_t[iLastKeyP-1];
-    //-------假设两个tt之间的qq是线性变化，计算tt[0]时刻到t1时刻XLD的入库水量------
-    //找到t1之前tt中最近的时间的下标
-    var i = 0;
-    while (tt[i] < t1) {
-      i++;
-    }
-    //从tt[0]到tt[i-1]对qq积分
-    var vol = 0;
-    for (var j = 0; j < i-1; j++) {
-      vol -= (tt[j+1] - tt[j]) * (qq[j+1] + qq[j]) / 2;
-    }
-    //插值得到t1时刻的qq
-    var q1 = interpolate(tt, qq, t1);
-    //vol加上从tt[i-1]到t1的qq积分
-    vol -= (t1 - tt[i-1]) * (q1 + qq[i-1]) / 2;
-    //vol = vol*3600;
-    //-------------------------------------------------------------------------
+  if (iReservoir === 1) {
+        var t1 = XLD_t[iLastKeyP - 1];
+        //-------假设两个tt之间的qq是线性变化，计算tt[0]时刻到t1时刻XLD的入库水量------
+        //找到t1之前tt中最近的时间的下标
+        var i = 0;
+        while (tt[i] < t1) {
+            i++;
+        }
+        //从tt[0]到tt[i-1]对qq积分
+        var vol = 0;
+        for (var j = 0; j < i - 1; j++) {
+            vol -= (tt[j + 1] - tt[j]) * (qq[j + 1] + qq[j]) / 2;
+        }
+        //插值得到t1时刻的qq
+        var q1 = interpolate(tt, qq, t1);
+        //vol加上从tt[i-1]到t1的qq积分
+        vol -= (t1 - tt[i - 1]) * (q1 + qq[i - 1]) / 2;
+        //vol = vol*3600;
+        //-------------------------------------------------------------------------
 
-    for (var j = 0; j < iLastKeyP - 1; j++) {
-      for (var j = 0; j < iLastKeyP - 1; j++) {
-        vol += (XLD_t[j+1] - XLD_t[j]) * (XLD_q[j+1] + XLD_q[j]) / 2;
-      }
+
+        for (var j = 0; j < iLastKeyP - 1; j++) {
+            vol += (XLD_t[j + 1] - XLD_t[j]) * (XLD_q[j + 1] + XLD_q[j]) / 2;
+        }
+
+        t2 = t1;
+        var q2 = q1;
+        var dt = 12;
+        var stop_flag = 0;
+        while (stop_flag === 0) {
+            t2 = t2 + dt;
+            q2 = interpolate(tt, qq, t2);
+            vol -= dt * (q2 + q1) / 2;
+            if (dischargeMod === 1) {
+                //维持上一个调控流量
+                vol += dt * XLD_q[iLastKeyP - 1];
+                t1 = t2;
+                q1 = q2;
+                if (vol * 3600 / 10 ** 8 > volTarg) {
+                    stop_flag = 1;
+                }
+                console.log('vol:', vol * 3600 / 10 ** 8);
+            }
+            else {
+                //线性变化至当前调控流量
+            }
+        }
+    } else {
+        var t1 = SMX_t[iLastKeyP - 1];
     }
-    t2 = t1;
-    var q2 = q1;
-    var dt = 12;
-    while ((vol *3600 /10 ** 8) < volTarg) {
-      t2 = t2 + dt;
-      q2 = interpolate(tt, qq, t2);
-      vol -= dt * (q2 + q1) / 2;
-      vol += dt * XLD_q[iLastKeyP-1];
-      t1 = t2;
-      q1 = q2;
-      console.log('vol:', vol * 3600 / 10 ** 8);
-    }
-  } else {
-    var t1 = SMX_t[iLastKeyP-1];
-  }
-  
   return t2;
 }
 
@@ -261,7 +270,7 @@ fetch('Xiaolangdi.json')
                 console.log('Volume FloodControl:', Vol_FldContr);
                 var netOutflowVol = VolIni - Vol_FldContr;     //净流出水量
                 console.log('Net Outflow Volume:', netOutflowVol);
-                inputsT[3].value = CalculateT(netOutflowVol, XLD.t, XLD.Inflow, 3, 1);
+                inputsT[3].value = CalculateT(netOutflowVol, XLD.t, XLD.Inflow, 3, 1, 1);
             }
         }
     });
@@ -270,6 +279,16 @@ fetch('Xiaolangdi.json')
     inputsQ[4].addEventListener('mouseover', function () {
         this.title = '下游不淤流量';
     });
+    inputsQ[4].addEventListener('blur', function () {
+        if (this.value !== '') {
+            var WlReg_XLD = document.getElementById('WL-WaterSedReg').value;
+            if (WlReg_XLD === '') {
+                alert('请输入小浪底对接水位');
+            } else {
+                
+            }
+        }
+    });    
 
     //鼠标悬停在inputsT[4]上时间，显示一个提示
     inputsT[4].addEventListener('mouseover', function () {
