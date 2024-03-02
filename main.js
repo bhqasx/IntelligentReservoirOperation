@@ -243,15 +243,40 @@ fetch('Xiaolangdi.json')
     //console.log('t values for table ' + (t + 1) + ':', tables[t] === 'table1' ? XLD_t : SMX_t);
     //console.log('Q values for table ' + (t + 1) + ':', tables[t] === 'table1' ? XLD_q : SMX_q);
   }
-
-  //另table1的第二行的Q和第一行的Q相等，这两个单元格显示的值也相同
-    var tablel = document.getElementsByClassName('table1')[0];
-    var inputsQ = tablel.getElementsByClassName('input-q');
-    var inputsT = tablel.getElementsByClassName('input-t');
-    inputsQ[0].addEventListener('input', function () {
+  
+  var table = document.getElementsByClassName('table1')[0];
+  var inputsQ = table.getElementsByClassName('input-q');
+  var inputsT = table.getElementsByClassName('input-t');
+  var table = document.getElementsByClassName('table2')[0];
+  var inputsQ_SMX = table.getElementsByClassName('input-q');
+  var inputsT_SMX = table.getElementsByClassName('input-t');
+    //令inputsT[0]的文本框边框颜色变为红色
+    inputsT[0].style.borderColor = 'red';
+  
+    inputsT[0].addEventListener('blur', function () {
+        if (this.value !== '') {
+            inputsT_SMX[0].value = this.value;
+            SMX_t[0] = Number(this.value);
+            //令inputsT[0]的文本框边框颜色恢复默认
+            inputsT[0].style.borderColor = '';
+            //令inputsQ[0]的文本框边框颜色变为红色
+            inputsQ[0].style.borderColor = 'red';
+        }
+    });
+  //令table1的第二行的Q和第一行的Q相等，这两个单元格显示的值也相同
+    inputsQ[0].addEventListener('blur', function () {
         if (this.value !== '') {
             inputsQ[1].value = this.value;
             XLD_q[1] = Number(this.value);
+            inputsQ[0].style.borderColor = '';
+            inputsT[1].style.borderColor = 'red';
+        }
+    });
+
+    inputsT[1].addEventListener('blur', function () {
+        if (this.value !== '') {
+            inputsT[1].style.borderColor = '';
+            inputsQ[2].style.borderColor = 'red';
         }
     });
 
@@ -277,6 +302,8 @@ fetch('Xiaolangdi.json')
                 inputsT[3].value = CalculateT(netOutflowVol, XLD.t, XLD.Inflow, 3, 1, 1);
                 XLD_t[3] = Number(inputsT[3].value);
             }
+            inputsQ[2].style.borderColor = '';
+            inputsQ[4].style.borderColor = 'red';
         }
     });
 
@@ -300,6 +327,8 @@ fetch('Xiaolangdi.json')
                 XLD_t[4] = Number(inputsT[4].value);
             }
         }
+        inputsQ[4].style.borderColor = '';
+        inputsT_SMX[1].style.borderColor = 'red';
     });    
 
     //鼠标悬停在inputsT[4]上时间，显示一个提示
@@ -315,7 +344,7 @@ fetch('Xiaolangdi.json')
         }
     });
 }
-
+    
 //保存按钮
   document.getElementById('save').addEventListener('click', function () {
     var XLD_keypoints = {
