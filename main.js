@@ -346,6 +346,9 @@ fetch('Xiaolangdi.json')
 
   inputsQ[5].addEventListener('blur', function () { 
     if (this.value !== '') {
+      inputsQ[6].value = this.value;
+      XLD_q[6] = Number(this.value);
+
       inputsQ[5].style.borderColor = '';
       inputsT_SMX[3].style.borderColor = 'red';  
     }
@@ -379,6 +382,14 @@ fetch('Xiaolangdi.json')
         inputsQ_SMX[3].value = this.value;
         SMX_q[3] = Number(this.value);
       }
+    }
+  });
+
+  inputsT_SMX[3].addEventListener('blur', function () {
+    if (this.value !== '') {
+      inputsT[6].value = this.value;
+      XLD_t[6] = Number(this.value);
+      inputsT_SMX[3].style.borderColor = '';
     }
   });
 }
