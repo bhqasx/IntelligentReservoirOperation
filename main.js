@@ -343,6 +343,13 @@ fetch('Xiaolangdi.json')
   inputsT[4].addEventListener('mouseover', function () {
     this.title = '达到对接水位的时刻';
   });
+
+  inputsQ[5].addEventListener('blur', function () { 
+    if (this.value !== '') {
+      inputsQ[5].style.borderColor = '';
+      inputsT_SMX[3].style.borderColor = 'red';  
+    }
+  });
   
   inputsT_SMX[1].addEventListener('blur', function () {
     if (this.value !== '') {
@@ -361,7 +368,17 @@ fetch('Xiaolangdi.json')
       var qIncrRate = 134.8;       //单位：m3/s/h
       inputsT_SMX[2].value = SMX_t[1] + (q2 - q1) / qIncrRate;
       SMX_t[2] = Number(inputsT_SMX[2].value);
-      inputsQ_SMX[2].style.borderColor = '';
+      if (SMX_t[2] < XLD_t[4]) {
+        alert('SMX_t[2] < XLD_t[4]');
+      } else {
+        inputsT[5].value = SMX_t[2];
+        XLD_t[5] = SMX_t[2];;
+        inputsQ_SMX[2].style.borderColor = '';
+        inputsQ[5].style.borderColor = 'red';
+
+        inputsQ_SMX[3].value = this.value;
+        SMX_q[3] = Number(this.value);
+      }
     }
   });
 }
