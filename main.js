@@ -389,7 +389,29 @@ fetch('Xiaolangdi.json')
     if (this.value !== '') {
       inputsT[6].value = this.value;
       XLD_t[6] = Number(this.value);
+
+      inputsT[7].value = Number(this.value) + 24;
+      XLD_t[7] = Number(this.value) + 24;
+
+      inputsT_SMX[4].value = Number(this.value) + 24;
+      SMX_t[4] = Number(this.value) + 24;
       inputsT_SMX[3].style.borderColor = '';
+      inputsQ_SMX[4].style.borderColor = 'red';
+    }
+  });
+
+  inputsQ_SMX[4].addEventListener('blur', function () {
+    if (this.value !== '') {
+      SMX_q[4] = Number(this.value);
+      inputsQ[7].value = this.value;
+      XLD_q[7] = Number(this.value);
+
+      inputsQ_SMX[5].value = this.value;
+      SMX_q[5] = Number(this.value);
+
+      inputsQ[8].value = this.value;
+      XLD_q[8] = Number(this.value);
+      inputsQ_SMX[4].style.borderColor = '';
     }
   });
 }
