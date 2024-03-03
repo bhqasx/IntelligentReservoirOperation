@@ -250,99 +250,120 @@ fetch('Xiaolangdi.json')
   var table = document.getElementsByClassName('table2')[0];
   var inputsQ_SMX = table.getElementsByClassName('input-q');
   var inputsT_SMX = table.getElementsByClassName('input-t');
-    //令inputsT[0]的文本框边框颜色变为红色
-    inputsT[0].style.borderColor = 'red';
-  
-    inputsT[0].addEventListener('blur', function () {
-        if (this.value !== '') {
-            inputsT_SMX[0].value = this.value;
-            SMX_t[0] = Number(this.value);
-            //令inputsT[0]的文本框边框颜色恢复默认
-            inputsT[0].style.borderColor = '';
-            //令inputsQ[0]的文本框边框颜色变为红色
-            inputsQ[0].style.borderColor = 'red';
-        }
-    });
+  //令inputsT[0]的文本框边框颜色变为红色
+  inputsT[0].style.borderColor = 'red';
+
+  inputsT[0].addEventListener('blur', function () {
+    if (this.value !== '') {
+      inputsT_SMX[0].value = this.value;
+      SMX_t[0] = Number(this.value);
+      //令inputsT[0]的文本框边框颜色恢复默认
+      inputsT[0].style.borderColor = '';
+      //令inputsQ[0]的文本框边框颜色变为红色
+      inputsQ[0].style.borderColor = 'red';
+    }
+  });
   //令table1的第二行的Q和第一行的Q相等，这两个单元格显示的值也相同
-    inputsQ[0].addEventListener('blur', function () {
-        if (this.value !== '') {
-            inputsQ[1].value = this.value;
-            XLD_q[1] = Number(this.value);
-            inputsQ[0].style.borderColor = '';
-            inputsT[1].style.borderColor = 'red';
-        }
-    });
+  inputsQ[0].addEventListener('blur', function () {
+    if (this.value !== '') {
+      inputsQ[1].value = this.value;
+      XLD_q[1] = Number(this.value);
+      inputsQ[0].style.borderColor = '';
+      inputsT[1].style.borderColor = 'red';
+    }
+  });
 
-    inputsT[1].addEventListener('blur', function () {
-        if (this.value !== '') {
-            inputsT[1].style.borderColor = '';
-            inputsQ[2].style.borderColor = 'red';
-        }
-    });
+  //table1的第二行的t输入后，第三和第四行的t自动计算
+  inputsT[1].addEventListener('blur', function () {
+    if (this.value !== '') {
+      inputsT[2].value = Number(this.value) + 60;
+      XLD_t[2] = Number(this.value) + 60;
+    }
+  });
 
-    inputsQ[2].addEventListener('blur', function () {
-        if (this.value !== '') {
-            inputsQ[3].value = this.value;
-            XLD_q[3] = Number(this.value);
+  inputsT[1].addEventListener('blur', function () {
+    if (this.value !== '') {
+      inputsT[1].style.borderColor = '';
+      inputsQ[2].style.borderColor = 'red';
+    }
+  });
 
-            //计算现有水量
-            var xx = XLD.CapCurve.WL;
-            var yy = XLD.CapCurve.Vol;
-            var x = XLD["Water level"][0];
-            var VolIni = interpolate(xx, yy, x);      //调用interpolate函数
-            //读取id为WL-FloodControl的input的值
-            var WlFldContr_XLD = document.getElementById('WL-FloodControl').value;
-            //如果是空值，提醒用户输入小浪底汛限水位
-            if (WlFldContr_XLD === '') {
-                alert('请输入小浪底汛限水位');
-            } else {
-                //计算对应的水量
-                var Vol_FldContr = interpolate(xx, yy, WlFldContr_XLD);
-                var netOutflowVol = VolIni - Vol_FldContr;     //净流出水量
-                inputsT[3].value = CalculateT(netOutflowVol, XLD.t, XLD.Inflow, 3, 1, 1);
-                XLD_t[3] = Number(inputsT[3].value);
-            }
-            inputsQ[2].style.borderColor = '';
-            inputsQ[4].style.borderColor = 'red';
-        }
-    });
+  inputsQ[2].addEventListener('blur', function () {
+    if (this.value !== '') {
+      inputsQ[3].value = this.value;
+      XLD_q[3] = Number(this.value);
 
-    //鼠标悬停在inputsQ[4]上时间，显示一个提示
-    inputsQ[4].addEventListener('mouseover', function () {
-        this.title = '下游不淤流量';
-    });
-    inputsQ[4].addEventListener('blur', function () {
-        if (this.value !== '') {
-            var WlReg_XLD = document.getElementById('WL-WaterSedReg').value;
-            if (WlReg_XLD === '') {
-                alert('请输入小浪底对接水位');
-            } else {
-                var xx = XLD.CapCurve.WL;
-                var yy = XLD.CapCurve.Vol;
-                var x = XLD["Water level"][0];
-                var VolIni = interpolate(xx, yy, x);      //调用interpolate函数                
-                var Vol_StartReg = interpolate(xx, yy, WlReg_XLD);
-                var netOutflowVol = VolIni - Vol_StartReg;     //净流出水量
-                inputsT[4].value = CalculateT(netOutflowVol, XLD.t, XLD.Inflow, 4, 1, 2);
-                XLD_t[4] = Number(inputsT[4].value);
-            }
-        }
-        inputsQ[4].style.borderColor = '';
-        inputsT_SMX[1].style.borderColor = 'red';
-    });    
+      //计算现有水量
+      var xx = XLD.CapCurve.WL;
+      var yy = XLD.CapCurve.Vol;
+      var x = XLD["Water level"][0];
+      var VolIni = interpolate(xx, yy, x);      //调用interpolate函数
+      //读取id为WL-FloodControl的input的值
+      var WlFldContr_XLD = document.getElementById('WL-FloodControl').value;
+      //如果是空值，提醒用户输入小浪底汛限水位
+      if (WlFldContr_XLD === '') {
+        alert('请输入小浪底汛限水位');
+      } else {
+        //计算对应的水量
+        var Vol_FldContr = interpolate(xx, yy, WlFldContr_XLD);
+        var netOutflowVol = VolIni - Vol_FldContr;     //净流出水量
+        inputsT[3].value = CalculateT(netOutflowVol, XLD.t, XLD.Inflow, 3, 1, 1);
+        XLD_t[3] = Number(inputsT[3].value);
+      }
+      inputsQ[2].style.borderColor = '';
+      inputsQ[4].style.borderColor = 'red';
+    }
+  });
 
-    //鼠标悬停在inputsT[4]上时间，显示一个提示
-    inputsT[4].addEventListener('mouseover', function () {
-        this.title = '达到对接水位的时刻';
-    });
+  //鼠标悬停在inputsQ[4]上时间，显示一个提示
+  inputsQ[4].addEventListener('mouseover', function () {
+    this.title = '下游不淤流量';
+  });
+  inputsQ[4].addEventListener('blur', function () {
+    if (this.value !== '') {
+      var WlReg_XLD = document.getElementById('WL-WaterSedReg').value;
+      if (WlReg_XLD === '') {
+        alert('请输入小浪底对接水位');
+      } else {
+        var xx = XLD.CapCurve.WL;
+        var yy = XLD.CapCurve.Vol;
+        var x = XLD["Water level"][0];
+        var VolIni = interpolate(xx, yy, x);      //调用interpolate函数                
+        var Vol_StartReg = interpolate(xx, yy, WlReg_XLD);
+        var netOutflowVol = VolIni - Vol_StartReg;     //净流出水量
+        inputsT[4].value = CalculateT(netOutflowVol, XLD.t, XLD.Inflow, 4, 1, 2);
+        XLD_t[4] = Number(inputsT[4].value);
+      }
+    }
+    inputsQ[4].style.borderColor = '';
+    inputsT_SMX[1].style.borderColor = 'red';
+  });
 
-    //table1的第二行的t输入后，第三和第四行的t自动计算
-    inputsT[1].addEventListener('blur', function () {
-        if (this.value !== '') {
-            inputsT[2].value = Number(this.value) + 60;
-            XLD_t[2] = Number(this.value) + 60;
-        }
-    });
+  //鼠标悬停在inputsT[4]上时间，显示一个提示
+  inputsT[4].addEventListener('mouseover', function () {
+    this.title = '达到对接水位的时刻';
+  });
+  
+  inputsT_SMX[1].addEventListener('blur', function () {
+    if (this.value !== '') {
+      inputsT_SMX[1].style.borderColor = '';
+      inputsQ_SMX[2].style.borderColor = 'red';
+    }
+  });
+
+  inputsQ_SMX[2].addEventListener('blur', function () {
+    if (this.value !== '') {
+      var xx = SMX.t;
+      var yy = SMX.Inflow;
+      var x = SMX_t[1];
+      var q1 = interpolate(xx, yy, x);
+      var q2 = this.value;
+      var qIncrRate = 134.8;       //单位：m3/s/h
+      inputsT_SMX[2].value = SMX_t[1] + (q2 - q1) / qIncrRate;
+      SMX_t[2] = Number(inputsT_SMX[2].value);
+      inputsQ_SMX[2].style.borderColor = '';
+    }
+  });
 }
     
 //保存按钮
