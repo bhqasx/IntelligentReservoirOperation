@@ -86,19 +86,52 @@ function CalculateT(volTarg, tt, qq, iLastKeyP, iReservoir, dischargeMod) {
                 }
                 console.log('vol:', vol * 3600 / 10 ** 8);
             }
-            else {
+           else (dischargeMod === 2) {
                 //线性变化至当前调控流量
                 var dVol = (t2 - XLD_t[iLastKeyP - 1]) * (XLD_q[iLastKeyP - 1] + XLD_q[iLastKeyP]) / 2;
                 if ((vol + dVol) * 3600 / 10 ** 8 > volTarg) {
                     stop_flag = 1;
                 }
                 console.log('vol:', (vol + dVol) * 3600 / 10 ** 8);
-            }
+            }            
         }
     } else {
         var t1 = SMX_t[iLastKeyP - 1];
     }
   return t2;
+}
+
+//计算开始回蓄的时间
+function CalculateRefillT(volChange, tt, qq, tCtrl, qCtrl) {
+  var t = 0;
+  //得到tCtrl的最后一个值
+  var tEnd = tCtrl[tCtrl.length - 1];
+  //找到tEnd之前tt中最近的时间的下标
+  var i = 0;
+  while (tt[i] < tEnd) {
+    i++;
+  }
+  var vol_in = 0;
+  for (var j = 0; j < i - 1; j++) {
+      vol_in += (tt[j + 1] - tt[j]) * (qq[j + 1] + qq[j]) / 2;
+  }
+  var q1 = interpolate(tt, qq, tEnd);
+  vol_in += (tEnd - tt[i - 1]) * (q1 + qq[i - 1]) / 2;
+
+  var vol_out = 0;
+  var iPre = 8;    //也许改为tCtrl.length-4更通用？
+  for (var j = 0; j < iPre; j++) {
+    vol_out += (tCtrl[j] - tCtrl[j - 1]) * (qCtrl[j] + qCtrl[j - 1]) / 2;
+  }
+  vol_out = volChange + vol_in - vol_out;
+  var tPre = tCtrl[iPre - 1];
+  var qPre = qCtrl[iPre - 1];
+  var qCurrent = qCtrl[iPre];
+  var tNext = tCtrl[iPre + 2];
+  var qNext = (qCtrl[iPre + 2] + qCtrl[iPre + 1]) / 2;
+  //求解vol_out = (t - tPre) * (qPre + qCurrent) / 2 + (tNext - t) * qNext
+
+  return t;
 }
 
 window.onload = function() {
@@ -353,6 +386,35 @@ fetch('Xiaolangdi.json')
       inputsT_SMX[3].style.borderColor = 'red';  
     }
   });
+
+  inputsQ[9].addEventListener('blur', function () {
+    if (this.value !== '') {
+      inputsQ[10].value = this.value;
+      XLD_q[9] = Number(this.value);
+      XLD_q[10] = Number(this.value);
+      
+      inputsQ[9].style.borderColor = '';
+      inputsT[10].style.borderColor = 'red';
+    }
+  });
+
+  inputsT[10].addEventListener('blur', function () {
+    if (this.value !== '') {
+      var volWatSupply = document.getElementById('Vol-WatSupply').value;
+      if (volWatSupply === '') {
+        alert('请输入小浪底期末可供水量');
+      } else {
+        var xx = XLD.CapCurve.WL;
+        var yy = XLD.CapCurve.Vol;
+        var x = XLD["Water level"][0];
+        var VolIni = interpolate(xx, yy, x);
+        var vol_210 = interpolate(xx, yy, 210);
+        var netOutflowVol = VolIni - (vol_210 + Number(volWatSupply));
+        inputsT[8].value = CalculateRefillT(netOutflowVol, XLD.t, XLD.Inflow, XLD_t, XLD_q);
+        inputsT[10].style.borderColor = '';
+      }
+    }
+  });
   
   inputsT_SMX[1].addEventListener('blur', function () {
     if (this.value !== '') {
@@ -412,6 +474,7 @@ fetch('Xiaolangdi.json')
       inputsQ[8].value = this.value;
       XLD_q[8] = Number(this.value);
       inputsQ_SMX[4].style.borderColor = '';
+      inputsQ[9].style.borderColor = 'red';
     }
   });
 }
