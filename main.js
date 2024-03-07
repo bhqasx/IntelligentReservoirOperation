@@ -86,7 +86,7 @@ function CalculateT(volTarg, tt, qq, iLastKeyP, iReservoir, dischargeMod) {
                 }
                 console.log('vol:', vol * 3600 / 10 ** 8);
             }
-           else (dischargeMod === 2) {
+           else {
                 //线性变化至当前调控流量
                 var dVol = (t2 - XLD_t[iLastKeyP - 1]) * (XLD_q[iLastKeyP - 1] + XLD_q[iLastKeyP]) / 2;
                 if ((vol + dVol) * 3600 / 10 ** 8 > volTarg) {
@@ -120,16 +120,17 @@ function CalculateRefillT(volChange, tt, qq, tCtrl, qCtrl) {
 
   var vol_out = 0;
   var iPre = 8;    //也许改为tCtrl.length-4更通用？
-  for (var j = 0; j < iPre; j++) {
+  for (var j = 1; j < iPre; j++) {
     vol_out += (tCtrl[j] - tCtrl[j - 1]) * (qCtrl[j] + qCtrl[j - 1]) / 2;
   }
-  vol_out = volChange + vol_in - vol_out;
+  vol_out = volChange * 10 **8 / 3600 + vol_in - vol_out;
   var tPre = tCtrl[iPre - 1];
   var qPre = qCtrl[iPre - 1];
   var qCurrent = qCtrl[iPre];
   var tNext = tCtrl[iPre + 2];
   var qNext = (qCtrl[iPre + 2] + qCtrl[iPre + 1]) / 2;
   //求解vol_out = (t - tPre) * (qPre + qCurrent) / 2 + (tNext - t) * qNext
+  t = (vol_out + (qCurrent + qPre) * tPre / 2 - qNext * tNext) / ((qCurrent + qPre) /2 - qNext); 
 
   return t;
 }
@@ -411,6 +412,12 @@ fetch('Xiaolangdi.json')
         var vol_210 = interpolate(xx, yy, 210);
         var netOutflowVol = VolIni - (vol_210 + Number(volWatSupply));
         inputsT[8].value = CalculateRefillT(netOutflowVol, XLD.t, XLD.Inflow, XLD_t, XLD_q);
+        XLD_t[8] = Number(inputsT[8].value);
+        inputsT[9].value = XLD_t[8];
+        XLD_t[9] = XLD_t[8];
+        inputsT_SMX[7].value = this.value;
+        SMX_t[7] = Number(this.value);
+
         inputsT[10].style.borderColor = '';
       }
     }
