@@ -95,8 +95,50 @@ function CalculateT(volTarg, tt, qq, iLastKeyP, iReservoir, dischargeMod) {
                 console.log('vol:', (vol + dVol) * 3600 / 10 ** 8);
             }            
         }
-    } else {
+    } else if (iReservoir === 2) {
         var t1 = SMX_t[iLastKeyP - 1];
+        var i = 0;
+        while (tt[i] < t1) {
+            i++;
+        }
+
+        var tStart = SMX_t[1];     //三门峡开始调度的时间，在此之前进出平衡
+        var iStart = 0;
+        //寻找落入调度时间范围的第一个入库数据点
+        while (tt[iStart] < tStart) {
+            iStart++;
+        }
+
+        var vol = 0;
+        //计算从tStart到tt[iStart - 1]的入库水量
+        var qStart = interpolate(tt, qq, tStart);
+        vol -= (tt[iStart] - tStart) * (qStart + qq[iStart]) / 2;
+
+        for (var j = iStart; j < i - 1; j++) {
+            vol -= (tt[j + 1] - tt[j]) * (qq[j + 1] + qq[j]) / 2;
+        }
+        q1 = interpolate(tt, qq, t1);
+        vol -= (t1 - tt[i - 1]) * (q1 + qq[i - 1]) / 2;
+        vol += (SMX_t[2] - SMX_t[1]) * (SMX_q[2] + qStart) / 2;
+        for (var j = 2; j < iLastKeyP - 1; j++) {
+            vol += (SMX_t[j + 1] - SMX_t[j]) * (SMX_q[j + 1] + SMX_q[j]) / 2;
+        }
+
+        t2 = t1;
+        var q2 = q1;
+        var dt = 12;
+        var stop_flag = 0;
+        while (stop_flag === 0) {
+            t2 = t2 + dt;
+            q2 = interpolate(tt, qq, t2);
+            vol -= dt * (q2 + q1) / 2;
+            vol += dt * SMX_q[iLastKeyP - 1];
+            t1 = t2;
+            q1 = q2;
+            if (vol * 3600 / 10 ** 8 > volTarg) {
+                stop_flag = 1;
+            }
+        }
     }
   return t2;
 }
@@ -415,6 +457,20 @@ fetch('Xiaolangdi.json')
         XLD_t[8] = Number(inputsT[8].value);
         inputsT[9].value = XLD_t[8];
         XLD_t[9] = XLD_t[8];
+
+        xx = SMX.CapCurve.WL;
+        yy = SMX.CapCurve.Vol;
+        x = SMX["Water level"][0];
+        VolIni = interpolate(xx, yy, x);
+        x = document.getElementById('WL-FloodControl-SMX').value;
+        var Vol_FldContr_SMX = interpolate(xx, yy, x);
+        netOutflowVol = VolIni - Vol_FldContr_SMX;
+        inputsT_SMX[5].value = CalculateT(netOutflowVol, SMX.t, SMX.Inflow, 5, 2, 1);
+        SMX_t[5] = inputsT_SMX[5].value;
+
+        inputsT_SMX[6].value = SMX_t[5];
+        SMX_t[6] = SMX_t[5];
+
         inputsT_SMX[7].value = this.value;
         SMX_t[7] = Number(this.value);
 
