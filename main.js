@@ -196,35 +196,35 @@ fetch('Xiaolangdi.json')
           {
             label: 'Inflow',
             data: XLD.Inflow,
-            yAxisID: 'y-axis-1',
+            yAxisID: 'yAxis1',
           },
           {
             label: 'Outflow',
             data: XLD.Outflow,
-            yAxisID: 'y-axis-1',
+            yAxisID: 'yAxis1',
           },
           {
             label: 'Water Level',
             data: XLD["Water level"],
-            yAxisID: 'y-axis-2',
+            yAxisID: 'yAxis2',
           }
         ]
       },
       options: {
         responsive: true,
         scales: {
-          yAxes: [
-            {
-              id: 'y-axis-1',
-              type: 'linear',
-              position: 'left',
-            },
-            {
-              id: 'y-axis-2',
-              type: 'linear',
-              position: 'right',
-            }
-          ]
+          x: {
+            type: 'linear',
+            position: 'bottom',
+          },
+          yAxis1: {
+            type: 'linear',
+            position: 'left',
+          },
+          yAxis2: {
+            type: 'linear',
+            position: 'right',
+          }
         }
       }
     });
@@ -247,35 +247,35 @@ fetch('Xiaolangdi.json')
             {
               label: 'Inflow',
               data: SMX.Inflow,
-              yAxisID: 'y-axis-1',
+              yAxisID: 'yAxisSMX1',
             },
             {
               label: 'Outflow',
               data: SMX.Outflow,
-              yAxisID: 'y-axis-1',
+              yAxisID: 'yAxisSMX1',
             },
             {
               label: 'Water Level',
               data: SMX["Water level"],
-              yAxisID: 'y-axis-2',
+              yAxisID: 'yAxisSMX2',
             }
           ]
         },
         options: {
           responsive: true,
           scales: {
-            yAxes: [
-              {
-                id: 'y-axis-1',
-                type: 'linear',
-                position: 'left',
-              },
-              {
-                id: 'y-axis-2',
-                type: 'linear',
-                position: 'right',
-              }
-            ]
+            x: {
+              type: 'linear',
+              position: 'bottom',
+            },
+            yAxisSMX1: {
+              type: 'linear',
+              position: 'left',
+            },
+            yAxisSMX2: {
+              type: 'linear',
+              position: 'right',
+            }
           }
         }
       });
@@ -570,13 +570,23 @@ fetch('Xiaolangdi.json')
 //绘制调控过程线
 document.getElementById('plot').addEventListener('click', function () {
   //在chart1中绘制以XLD_t为横坐标，XLD_q为做坐标的连线
+  let xAxis2 = {
+    type: 'linear',
+    position: 'bottom',
+    labels: XLD_t,
+  };
+
+  chart1.options.xAxis2 = xAxis2;
+
   let XLD_RegCurve = {
     label: 'Regulated Discharge',
     //XLD_t作为横坐标，XLD_q作为纵坐标
     data: XLD_t.map((t, i) => ({ x: t, y: XLD_q[i] })),
-    yAxisID: 'y-axis-1',
+    yAxisID: 'yAxis1',
+    xAxisID: 'xAxis2',
   };
+  //chart1.data.labels = XLD_t;
   chart1.data.datasets.push(XLD_RegCurve);
-
+  
   chart1.update();
 });
