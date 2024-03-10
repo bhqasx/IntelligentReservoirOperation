@@ -1,6 +1,7 @@
 var XLD_t = [], XLD_q = [], SMX_t = [], SMX_q = [];
 var XLD = {};
 var SMX = {};
+let chart1, chart2;
 
 // 获取所有的输入框
 const inputs_all = document.querySelectorAll('input[type="number"]');
@@ -187,7 +188,7 @@ fetch('Xiaolangdi.json')
     var ctx = document.getElementById('chartArea1').getContext('2d');
 
     // Create the chart
-    new Chart(ctx, {
+    chart1 = new Chart(ctx, {
       type: 'line',
       data: {
         labels: XLD.t,
@@ -238,7 +239,7 @@ fetch('Xiaolangdi.json')
       var ctx = document.getElementById('chartArea2').getContext('2d');
 
       // Create the chart
-      new Chart(ctx, {
+      chart2 = new Chart(ctx, {
         type: 'line',
         data: {
           labels: SMX.t,
@@ -565,3 +566,17 @@ fetch('Xiaolangdi.json')
     a.download = filename;
     a.click();
   }
+
+//绘制调控过程线
+document.getElementById('plot').addEventListener('click', function () {
+  //在chart1中绘制以XLD_t为横坐标，XLD_q为做坐标的连线
+  let XLD_RegCurve = {
+    label: 'Regulated Discharge',
+    //XLD_t作为横坐标，XLD_q作为纵坐标
+    data: XLD_t.map((t, i) => ({ x: t, y: XLD_q[i] })),
+    yAxisID: 'y-axis-1',
+  };
+  chart1.data.datasets.push(XLD_RegCurve);
+
+  chart1.update();
+});
