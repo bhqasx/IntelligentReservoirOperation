@@ -276,14 +276,23 @@ fetch('Xiaolangdi.json')
             x: {
               type: 'linear',
               position: 'bottom',
+              grid: {
+                drawOnChartArea: false,  // Don't draw grid lines on the chart area
+              },
             },
             yAxisSMX1: {
               type: 'linear',
               position: 'left',
+              grid: {
+                drawOnChartArea: false,  // Don't draw grid lines on the chart area
+              },
             },
             yAxisSMX2: {
               type: 'linear',
               position: 'right',
+              grid: {
+                drawOnChartArea: false,  // Don't draw grid lines on the chart area
+              },
             }
           }
         }
@@ -605,4 +614,26 @@ document.getElementById('plot').addEventListener('click', function () {
   chart1.data.datasets.push(XLD_RegCurve);
   
   chart1.update();
+
+  //chart2中绘制三门峡的调度过程线
+  let xAxis2_SMX = {
+    type: 'linear',
+    position: 'bottom',
+    grid: {
+      drawOnChartArea: false,  // Don't draw grid lines on the chart area
+    },        
+    labels: SMX_t,
+  };
+
+  if (!chart2.options.scales) {
+    chart2.options.scales = {};
+  }
+  chart2.options.scales['xAxis2'] = xAxis2_SMX;
+
+  let SMX_RegCurve = {
+    label: 'Regulated Discharge',
+    data: SMX_t.slice(2, 6).map((t, i) => ({ x: t, y: SMX_q[i + 2] })),
+    yAxisID: 'yAxisSMX1',
+    xAxisID: 'xAxis2',
+  };
 });
