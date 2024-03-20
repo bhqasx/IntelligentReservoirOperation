@@ -216,14 +216,23 @@ fetch('Xiaolangdi.json')
           x: {
             type: 'linear',
             position: 'bottom',
+            grid: {
+              drawOnChartArea: false,  // Don't draw grid lines on the chart area
+            },            
           },
           yAxis1: {
             type: 'linear',
             position: 'left',
+            grid: {
+              drawOnChartArea: false,  // Don't draw grid lines on the chart area
+            },            
           },
           yAxis2: {
             type: 'linear',
             position: 'right',
+            grid: {
+              drawOnChartArea: false,  // Don't draw grid lines on the chart area
+            },            
           }
         }
       }
@@ -573,10 +582,17 @@ document.getElementById('plot').addEventListener('click', function () {
   let xAxis2 = {
     type: 'linear',
     position: 'bottom',
+    grid: {
+      drawOnChartArea: false,  // Don't draw grid lines on the chart area
+    },        
     labels: XLD_t,
   };
 
-  chart1.options.xAxis2 = xAxis2;
+  // Add the new x axis to the chart
+  if (!chart1.options.scales) {
+    chart1.options.scales = {};
+  }
+  chart1.options.scales['xAxis2'] = xAxis2;
 
   let XLD_RegCurve = {
     label: 'Regulated Discharge',
