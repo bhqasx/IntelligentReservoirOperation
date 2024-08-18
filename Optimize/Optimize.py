@@ -1,13 +1,16 @@
 import subprocess
+import os
 
-# 指定exe文件的路径
-exe_path = r'E:\MyGithubProj\MyModel_openmp\1D_RiverNet_OCTC\Debug\1D_RiverNet_OCTC.exe'  # 替换为你的exe文件路径
+# 定义可执行文件所在的目录和文件名
+exe_directory = r"D:\一维计算结果\小浪底与下游联合\XLDDS05\1D_RiverNet_OCTC"  # 替换为你exe文件所在的目录
+executable = "1D_RiverNet_OCTC.exe"
+argument = "case1"     #这个文件夹放在exe_directory下，里面放入Input和Output文件夹
 
-# 启动exe文件
+# 使用绝对路径运行可执行文件
 try:
-    result = subprocess.run([exe_path], check=True)
-    print("程序成功执行。")
+    result = subprocess.run([os.path.join(exe_directory, executable), argument], 
+                            cwd=exe_directory,  # 设置工作目录
+                            check=True)
+    print("Process completed successfully.")
 except subprocess.CalledProcessError as e:
-    print(f"程序执行失败，错误代码：{e.returncode}")
-except FileNotFoundError:
-    print("找不到指定的exe文件，请检查路径。")
+    print(f"An error occurred: {e}")
