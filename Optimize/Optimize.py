@@ -2,7 +2,7 @@ import subprocess
 import os
 
 # 定义可执行文件所在的目录和文件名
-exe_directory = r"D:\一维计算结果\小浪底与下游联合\XLDDS05\1D_RiverNet_OCTC"  # 替换为你exe文件所在的目录
+exe_directory = r"E:\一维计算结果\小浪底与下游联合\XLDDS06\1D_RiverNet_OCTC"  # 替换为你exe文件所在的目录
 executable = "1D_RiverNet_OCTC.exe"
 argument = "case1"     #这个文件夹放在exe_directory下，里面放入Input和Output文件夹
 
