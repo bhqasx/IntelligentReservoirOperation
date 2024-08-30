@@ -612,7 +612,6 @@ document.getElementById('plot').addEventListener('click', function () {
   };
   //chart1.data.labels = XLD_t;
   chart1.data.datasets.push(XLD_RegCurve);
-  
   chart1.update();
 
   //chart2中绘制三门峡的调度过程线
@@ -628,12 +627,15 @@ document.getElementById('plot').addEventListener('click', function () {
   if (!chart2.options.scales) {
     chart2.options.scales = {};
   }
-  chart2.options.scales['xAxis2'] = xAxis2_SMX;
+  chart2.options.scales['xAxis2_SMX'] = xAxis2_SMX;
 
   let SMX_RegCurve = {
     label: 'Regulated Discharge',
     data: SMX_t.slice(2, 6).map((t, i) => ({ x: t, y: SMX_q[i + 2] })),
     yAxisID: 'yAxisSMX1',
-    xAxisID: 'xAxis2',
+    xAxisID: 'xAxis2_SMX',
   };
+
+  chart2.data.datasets.push(SMX_RegCurve);
+  chart2.update();
 });
