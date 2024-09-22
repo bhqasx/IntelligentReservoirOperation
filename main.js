@@ -368,6 +368,10 @@ fetch('Xiaolangdi.json')
     }
   });
 
+  inputsQ[0].addEventListener('mouseover', function () {
+    this.title = '下游不淤流量';
+  });
+
   //table1的第二行的t输入后，第三和第四行的t自动计算
   inputsT[1].addEventListener('blur', function () {
     if (this.value !== '') {
@@ -410,10 +414,7 @@ fetch('Xiaolangdi.json')
     }
   });
 
-  //鼠标悬停在inputsQ[4]上时间，显示一个提示
-  inputsQ[4].addEventListener('mouseover', function () {
-    this.title = '下游不淤流量';
-  });
+
   inputsQ[4].addEventListener('blur', function () {
     if (this.value !== '') {
       var WlReg_XLD = document.getElementById('WL-WaterSedReg').value;
