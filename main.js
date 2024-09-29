@@ -1,7 +1,12 @@
-var XLD_t = [], XLD_q = [], SMX_t = [], SMX_q = [];
+var XLD_t = new Array(11).fill(null);
+var XLD_q = new Array(11).fill(null);
+var SMX_t = new Array(8).fill(null);
+var SMX_q = new Array(8).fill(null);
 var XLD = {};
 var SMX = {};
 let chart1, chart2;
+
+
 
 // 获取所有的输入框
 const inputs_all = document.querySelectorAll('input[type="number"]');
@@ -486,10 +491,10 @@ fetch('Xiaolangdi.json')
         var Vol_FldContr_SMX = interpolate(xx, yy, x);
         netOutflowVol = VolIni - Vol_FldContr_SMX;
         inputsT_SMX[5].value = CalculateT(netOutflowVol, SMX.t, SMX.Inflow, 5, 2, 1);
-        SMX_t[5] = inputsT_SMX[5].value;
+        SMX_t[5] = Number(inputsT_SMX[5].value);
 
         inputsT_SMX[6].value = SMX_t[5];
-        SMX_t[6] = SMX_t[5];
+        SMX_t[6] = Number(SMX_t[5]);
 
         inputsT_SMX[7].value = this.value;
         SMX_t[7] = Number(this.value);
