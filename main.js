@@ -640,3 +640,12 @@ document.getElementById('plot').addEventListener('click', function () {
   chart2.data.datasets.push(SMX_RegCurve);
   chart2.update();
 });
+
+//生成初始方案
+document.getElementById('GenerateInitialPlan').addEventListener('click', function () {
+    if (typeof GenerateIniP === 'function') {
+        GenerateIniP();
+    } else {
+        console.error('GenerateIniP function is not defined');
+    }
+});
