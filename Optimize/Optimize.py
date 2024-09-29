@@ -68,6 +68,7 @@ for i in range(planNum):
     new_value = random.uniform(XLD_KeyP['t'][0], t2_lim)
     print(f"Plan {i}: Random value = {new_value}, Lower bound = {XLD_KeyP['t'][0]}, Upper bound = {t2_lim}")
     XLD_Plan[i]['t'][1] = new_value
+    XLD_Plan[i]['t'][2] = new_value + 60      
 
 
 # 定义可执行文件所在的目录和文件名
