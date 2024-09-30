@@ -5,6 +5,18 @@ import random
 import copy
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
+def interpolate(x, x_array, y_array):
+    if x <= x_array[0]:
+        return y_array[0]
+    if x >= x_array[-1]:
+        return y_array[-1]
+    for i in range(len(x_array) - 1):
+        if x_array[i] <= x < x_array[i+1]:
+            x0, x1 = x_array[i], x_array[i+1]
+            y0, y1 = y_array[i], y_array[i+1]
+            return y0 + (x - x0) * (y1 - y0) / (x1 - x0)
+    return None  # This should never happen if x is within the range of x_array
+
 # 读取文件XLD_keypoints.json和SMX_keypoints.json，如果这两个文件不在当前目录下，则从上一级目录中寻找
 # 找到后，将数据分别存入XLD_KeyP和SMX_KeyP
 def find_file(filename):
@@ -62,6 +74,13 @@ try:
             'WL': tempData.get('CapCurve', {}).get('WL', []),
             'Vol': tempData.get('CapCurve', {}).get('Vol', [])
         }
+
+    with open(smx_file, 'r') as f:
+        tempData = json.load(f)
+        SMX_CapCurve = {
+            'WL': tempData.get('CapCurve', {}).get('WL', []),
+            'Vol': tempData.get('CapCurve', {}).get('Vol', [])
+        }
 except FileNotFoundError as e:
     print(f"Error: {e}")
 except json.JSONDecodeError as e:
@@ -74,6 +93,9 @@ if iniWL_XLD == '':
     iniWL_XLD = 250.8
 else:
     iniWL_XLD = float(iniWL_XLD)
+xx = XLD_CapCurve['WL']
+yy = XLD_CapCurve['Vol']
+iniVol_XLD = interpolate(iniWL_XLD, xx, yy)
 
 iniWL_SMX = 318
 #在终端提示输入三门峡初始水位，并显示当前默认输入值是iniWL_SMX，如果用户输入为空，则使用默认值
@@ -82,6 +104,9 @@ if iniWL_SMX == '':
     iniWL_SMX = 318
 else:
     iniWL_SMX = float(iniWL_SMX)
+xx = SMX_CapCurve['WL']
+yy = SMX_CapCurve['Vol']
+iniVol_SMX = interpolate(iniWL_SMX, xx, yy)
 
 # 设置方案数量
 planNum = 8
@@ -110,6 +135,9 @@ for i in range(planNum):
     print(f"Plan {i}: Random value = {new_value}, Lower bound = {XLD_KeyP['t'][0]}, Upper bound = {t2_lim}")
     XLD_Plan[i]['t'][1] = new_value
     XLD_Plan[i]['t'][2] = new_value + 60  
+    #计算达到小浪底汛限水位的时间
+    Vol_FldContr = interpolate(XLD_HyperPara['WlFldContr'], XLD_CapCurve['WL'], XLD_CapCurve['Vol'])
+    netOutflowVol = iniVol_XLD - Vol_FldContr
 
 
 
