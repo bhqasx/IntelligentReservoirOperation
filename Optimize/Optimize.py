@@ -18,6 +18,7 @@ def find_file(filename):
         return parent_file
     raise FileNotFoundError(f"Could not find {filename} in current or parent directory")
 
+# 读取XLD_keypoints.json和SMX_keypoints.json
 try:
     xld_file = find_file("XLD_keypoints.json")
     smx_file = find_file("SMX_keypoints.json")
@@ -27,6 +28,11 @@ try:
         XLD_KeyP = {
             't': tempData.get('t', []),
             'q': tempData.get('q', [])
+        }
+        XLD_HyperPara = {
+            'WlFldContr': tempData.get('WlFldContr', 0),
+            'WlReg': tempData.get('WlReg', 0),
+            'volWatSupply': tempData.get('volWatSupply', 0)
         }        
     
     with open(smx_file, 'r') as f:
@@ -35,12 +41,47 @@ try:
             't': tempData.get('t', []),
             'q': tempData.get('q', [])
         }
+        SMX_HyperPara = {
+            'WlFldContr': tempData.get('WlFldContr', 0),
+        }
 
     print("Successfully loaded XLD_keypoints.json and SMX_keypoints.json")
 except FileNotFoundError as e:
     print(f"Error: {e}")
 except json.JSONDecodeError as e:
     print(f"Error decoding JSON: {e}")
+
+# 读取Xiaolangdi.json和Sanmenxia.json
+try:
+    xld_file = find_file("Xiaolangdi.json")
+    smx_file = find_file("Sanmenxia.json")
+
+    with open(xld_file, 'r') as f:
+        tempData = json.load(f)
+        XLD_CapCurve = {
+            'WL': tempData.get('CapCurve', {}).get('WL', []),
+            'Vol': tempData.get('CapCurve', {}).get('Vol', [])
+        }
+except FileNotFoundError as e:
+    print(f"Error: {e}")
+except json.JSONDecodeError as e:
+    print(f"Error decoding JSON: {e}")
+
+iniWL_XLD = 250.8
+#在终端提示输入小浪底初始水位，并显示当前默认输入值是iniWL_XLD，如果用户输入为空，则使用默认值
+iniWL_XLD = input(f"请输入小浪底初始水位: (默认值: {iniWL_XLD})")
+if iniWL_XLD == '':
+    iniWL_XLD = 250.8
+else:
+    iniWL_XLD = float(iniWL_XLD)
+
+iniWL_SMX = 318
+#在终端提示输入三门峡初始水位，并显示当前默认输入值是iniWL_SMX，如果用户输入为空，则使用默认值
+iniWL_SMX = input(f"请输入三门峡初始水位: (默认值: {iniWL_SMX})")
+if iniWL_SMX == '':
+    iniWL_SMX = 318
+else:
+    iniWL_SMX = float(iniWL_SMX)
 
 # 设置方案数量
 planNum = 8
@@ -68,7 +109,8 @@ for i in range(planNum):
     new_value = random.uniform(XLD_KeyP['t'][0], t2_lim)
     print(f"Plan {i}: Random value = {new_value}, Lower bound = {XLD_KeyP['t'][0]}, Upper bound = {t2_lim}")
     XLD_Plan[i]['t'][1] = new_value
-    XLD_Plan[i]['t'][2] = new_value + 60      
+    XLD_Plan[i]['t'][2] = new_value + 60  
+
 
 
 # 定义可执行文件所在的目录和文件名
