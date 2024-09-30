@@ -17,6 +17,81 @@ def interpolate(x, x_array, y_array):
             return y0 + (x - x0) * (y1 - y0) / (x1 - x0)
     return None  # This should never happen if x is within the range of x_array
 
+#定义一个名为CalculateT的函数，计算达到指定净出流水量所需的时间，从main.js中改写来
+def CalculateT(volTarg, tt, qq, iLastKeyP, iReservoir, dischargeMod, iPlan):
+    t2 = 0
+    if iReservoir == 1:  # XLD reservoir
+        t1 = XLD_Plan[iPlan]['t'][iLastKeyP - 1]
+        i = next(i for i, t in enumerate(tt) if t >= t1)
+        
+        vol = 0
+        for j in range(i - 1):
+            vol -= (tt[j + 1] - tt[j]) * (qq[j + 1] + qq[j]) / 2
+        
+        q1 = interpolate(t1, tt, qq)
+        vol -= (t1 - tt[i - 1]) * (q1 + qq[i - 1]) / 2
+        
+        for j in range(iLastKeyP - 1):
+            vol += (XLD_Plan[iPlan]['t'][j + 1] - XLD_Plan[iPlan]['t'][j]) * (XLD_Plan[iPlan]['q'][j + 1] + XLD_Plan[iPlan]['q'][j]) / 2
+        
+        t2 = t1
+        q2 = q1
+        dt = 12
+        stop_flag = 0
+        while stop_flag == 0:
+            t2 += dt
+            q2 = interpolate(t2, tt, qq)
+            vol -= dt * (q2 + q1) / 2
+            if dischargeMod == 1:         #维持上一个调控流量
+                vol += dt * XLD_Plan[iPlan]['q'][iLastKeyP - 1]
+                t1 = t2
+                q1 = q2
+                if vol * 3600 / 10**8 > volTarg:
+                    stop_flag = 1
+                #print('vol:', vol * 3600 / 10**8)
+            else:                       #线性变化至当前调控流量
+                dVol = (t2 - XLD_Plan[iPlan]['t'][iLastKeyP - 1]) * (XLD_Plan[iPlan]['q'][iLastKeyP - 1] + XLD_Plan[iPlan]['q'][iLastKeyP]) / 2
+                if (vol + dVol) * 3600 / 10**8 > volTarg:
+                    stop_flag = 1
+                #print('vol:', (vol + dVol) * 3600 / 10**8)
+    
+    elif iReservoir == 2:  # SMX reservoir
+        t1 = SMX_Plan[iPlan]['t'][iLastKeyP - 1]
+        i = next(i for i, t in enumerate(tt) if t >= t1)
+        
+        tStart = SMX_Plan[iPlan]['t'][1]
+        iStart = next(i for i, t in enumerate(tt) if t >= tStart)
+        
+        vol = 0
+        qStart = interpolate(tStart, tt, qq)
+        vol -= (tt[iStart] - tStart) * (qStart + qq[iStart]) / 2
+        
+        for j in range(iStart, i - 1):
+            vol -= (tt[j + 1] - tt[j]) * (qq[j + 1] + qq[j]) / 2
+        
+        q1 = interpolate(t1, tt, qq)
+        vol -= (t1 - tt[i - 1]) * (q1 + qq[i - 1]) / 2
+        vol += (SMX_Plan[iPlan]['t'][2] - SMX_Plan[iPlan]['t'][1]) * (SMX_Plan[iPlan]['q'][2] + qStart) / 2
+        
+        for j in range(2, iLastKeyP - 1):
+            vol += (SMX_Plan[iPlan]['t'][j + 1] - SMX_Plan[iPlan]['t'][j]) * (SMX_Plan[iPlan]['q'][j + 1] + SMX_Plan[iPlan]['q'][j]) / 2
+        
+        t2 = t1
+        q2 = q1
+        dt = 12
+        stop_flag = 0
+        while stop_flag == 0:
+            t2 += dt
+            q2 = interpolate(t2, tt, qq)
+            vol -= dt * (q2 + q1) / 2
+            vol += dt * SMX_Plan[iPlan]['q'][iLastKeyP - 1]
+            t1 = t2
+            q1 = q2
+            if vol * 3600 / 10**8 > volTarg:
+                stop_flag = 1
+    
+    return t2
+
 # 读取文件XLD_keypoints.json和SMX_keypoints.json，如果这两个文件不在当前目录下，则从上一级目录中寻找
 # 找到后，将数据分别存入XLD_KeyP和SMX_KeyP
 def find_file(filename):
@@ -74,6 +149,8 @@ try:
             'WL': tempData.get('CapCurve', {}).get('WL', []),
             'Vol': tempData.get('CapCurve', {}).get('Vol', [])
         }
+        XLD_t_in = tempData.get('t', [])
+        XLD_q_in = tempData.get('Inflow', [])
 
     with open(smx_file, 'r') as f:
         tempData = json.load(f)
@@ -138,7 +215,7 @@ for i in range(planNum):
     #计算达到小浪底汛限水位的时间
     Vol_FldContr = interpolate(XLD_HyperPara['WlFldContr'], XLD_CapCurve['WL'], XLD_CapCurve['Vol'])
     netOutflowVol = iniVol_XLD - Vol_FldContr
-
+    XLD_Plan[i]['t'][3] = CalculateT(netOutflowVol, XLD_t_in, XLD_q_in, 3, 1, 1, i)
 
 
 # 定义可执行文件所在的目录和文件名
