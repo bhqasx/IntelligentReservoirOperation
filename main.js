@@ -4,6 +4,9 @@ var SMX_t = new Array(8).fill(null);
 var SMX_q = new Array(8).fill(null);
 var XLD = {};
 var SMX = {};
+var WlFldContr_XLD;
+var WlReg_XLD;
+var volWatSupply;
 let chart1, chart2;
 
 
@@ -403,7 +406,7 @@ fetch('Xiaolangdi.json')
       var x = XLD["Water level"][0];
       var VolIni = interpolate(xx, yy, x);      //调用interpolate函数
       //读取id为WL-FloodControl的input的值
-      var WlFldContr_XLD = document.getElementById('WL-FloodControl').value;
+      WlFldContr_XLD = document.getElementById('WL-FloodControl').value;
       //如果是空值，提醒用户输入小浪底汛限水位
       if (WlFldContr_XLD === '') {
         alert('请输入小浪底汛限水位');
@@ -422,7 +425,7 @@ fetch('Xiaolangdi.json')
 
   inputsQ[4].addEventListener('blur', function () {
     if (this.value !== '') {
-      var WlReg_XLD = document.getElementById('WL-WaterSedReg').value;
+      WlReg_XLD = document.getElementById('WL-WaterSedReg').value;
       if (WlReg_XLD === '') {
         alert('请输入小浪底对接水位');
       } else {
@@ -468,7 +471,7 @@ fetch('Xiaolangdi.json')
 
   inputsT[10].addEventListener('blur', function () {
     if (this.value !== '') {
-      var volWatSupply = document.getElementById('Vol-WatSupply').value;
+      volWatSupply = document.getElementById('Vol-WatSupply').value;
       if (volWatSupply === '') {
         alert('请输入小浪底期末可供水量');
       } else {
@@ -571,11 +574,15 @@ fetch('Xiaolangdi.json')
   document.getElementById('save').addEventListener('click', function () {
     var XLD_keypoints = {
       t: XLD_t,
-      q: XLD_q
+      q: XLD_q,
+      WlFldContr: Number(WlFldContr_XLD),
+      WlReg: Number(WlReg_XLD),
+      volWatSupply: Number(volWatSupply)
     };
     var SMX_keypoints = {
       t: SMX_t,
-      q: SMX_q
+      q: SMX_q,
+      WlFldContr: Number(document.getElementById('WL-FloodControl-SMX').value)
     };
 
     saveToFile(XLD_keypoints, 'XLD_keypoints.json');
