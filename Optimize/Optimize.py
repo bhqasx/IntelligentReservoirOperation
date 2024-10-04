@@ -40,6 +40,11 @@ def CalculateT(volTarg, tt, qq, iLastKeyP, iReservoir, dischargeMod, iPlan):
         stop_flag = 0
         while stop_flag == 0:
             t2 += dt
+            if t2 > tt[-1]:
+                print(f"错误：t2 ({t2}) 超过了 tt 的最后一个时刻 ({tt[-1]})。")
+                print(f"当前 iLastKeyP: {iLastKeyP}, iPlan: {iPlan}")
+                return None  # 或者抛出一个异常
+
             q2 = interpolate(t2, tt, qq)
             vol -= dt * (q2 + q1) / 2
             if dischargeMod == 1:         #维持上一个调控流量
@@ -216,6 +221,10 @@ for i in range(planNum):
     Vol_FldContr = interpolate(XLD_HyperPara['WlFldContr'], XLD_CapCurve['WL'], XLD_CapCurve['Vol'])
     netOutflowVol = iniVol_XLD - Vol_FldContr
     XLD_Plan[i]['t'][3] = CalculateT(netOutflowVol, XLD_t_in, XLD_q_in, 3, 1, 1, i)
+    #计算达到小浪底对接水位的时间
+    Vol_StartReg = interpolate(XLD_HyperPara['WlReg'], XLD_CapCurve['WL'], XLD_CapCurve['Vol'])
+    netOutflowVol = iniVol_XLD - Vol_StartReg
+    XLD_Plan[i]['t'][4] = CalculateT(netOutflowVol, XLD_t_in, XLD_q_in, 4, 1, 2, i)
 
 
 # 定义可执行文件所在的目录和文件名
