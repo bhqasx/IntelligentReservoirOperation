@@ -163,6 +163,8 @@ try:
             'WL': tempData.get('CapCurve', {}).get('WL', []),
             'Vol': tempData.get('CapCurve', {}).get('Vol', [])
         }
+        SMX_t_in = tempData.get('t', [])
+        SMX_q_in = tempData.get('Inflow', [])
 except FileNotFoundError as e:
     print(f"Error: {e}")
 except json.JSONDecodeError as e:
@@ -225,7 +227,8 @@ for i in range(planNum):
     Vol_StartReg = interpolate(XLD_HyperPara['WlReg'], XLD_CapCurve['WL'], XLD_CapCurve['Vol'])
     netOutflowVol = iniVol_XLD - Vol_StartReg
     XLD_Plan[i]['t'][4] = CalculateT(netOutflowVol, XLD_t_in, XLD_q_in, 4, 1, 2, i)
-
+    #随机生成三门峡的起涨时刻，最小值为XLD_Plan[i]['t'][3]，最大值为为三门峡流量过程的最后一个时刻
+    SMX_Plan[i]['t'][1] = random.uniform(XLD_Plan[i]['t'][3], SMX_t_in[-1])
 
 # 定义可执行文件所在的目录和文件名
 exe_directory = r"E:\一维计算结果\小浪底与下游联合\XLDDS06\1D_RiverNet_OCTC"  # 替换为你exe文件所在的目录
