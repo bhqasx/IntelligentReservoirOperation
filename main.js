@@ -1,7 +1,7 @@
 var XLD_t = new Array(11).fill(null);
 var XLD_q = new Array(11).fill(null);
-var SMX_t = new Array(8).fill(null);
-var SMX_q = new Array(8).fill(null);
+var SMX_t = new Array(7).fill(null);
+var SMX_q = new Array(7).fill(null);
 var XLD = {};
 var SMX = {};
 var WlFldContr_XLD;
@@ -498,9 +498,6 @@ fetch('Xiaolangdi.json')
 
         inputsT_SMX[6].value = SMX_t[5];
         SMX_t[6] = Number(SMX_t[5]);
-
-        inputsT_SMX[7].value = this.value;
-        SMX_t[7] = Number(this.value);
 
         inputsT[10].style.borderColor = '';
       }
