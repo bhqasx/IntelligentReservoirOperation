@@ -256,6 +256,14 @@ def generate_from_SMX(i, xld_plan, smx_plan):
         return xld_plan, smx_plan, False
     xld_plan['t'][9] = xld_plan['t'][8]
 
+    # 计算三门峡水库回蓄结束时刻
+    vol_FldContr_SMX = interpolate(SMX_HyperPara['WlFldContr'], SMX_CapCurve['WL'], SMX_CapCurve['Vol'])
+    netOutflowVol = iniVol_SMX - vol_FldContr_SMX
+    smx_plan['t'][5], flag = CalculateT(netOutflowVol, SMX_t_in, SMX_q_in, 5, 2, 1, i)
+    if flag == False:
+        return xld_plan, smx_plan, False
+    smx_plan['t'][6] = smx_plan['t'][5]
+
     return xld_plan, smx_plan, True
 
 
