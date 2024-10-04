@@ -229,6 +229,15 @@ for i in range(planNum):
     XLD_Plan[i]['t'][4] = CalculateT(netOutflowVol, XLD_t_in, XLD_q_in, 4, 1, 2, i)
     #随机生成三门峡的起涨时刻，最小值为XLD_Plan[i]['t'][3]，最大值为为三门峡流量过程的最后一个时刻
     SMX_Plan[i]['t'][1] = random.uniform(XLD_Plan[i]['t'][3], SMX_t_in[-1])
+    #计算三门峡水库达到泄空流量的时刻
+    q1 = interpolate(SMX_Plan[i]['t'][1], SMX_t_in, SMX_q_in)
+    q2 = SMX_Plan[i]['q'][2]
+    qIncrRate = 134.8
+    SMX_Plan[i]['t'][2] = SMX_Plan[i]['t'][1] + (q2 - q1) / qIncrRate
+    XLD_Plan[i]['t'][5] = SMX_Plan[i]['t'][2]
+    #随机生成对接三门峡流量时的控制流量
+    XLD_Plan[i]['q'][5] = random.uniform(SMX_Plan[i]['q'][2], XLD_Plan[i]['q'][2])
+
 
 # 定义可执行文件所在的目录和文件名
 exe_directory = r"E:\一维计算结果\小浪底与下游联合\XLDDS06\1D_RiverNet_OCTC"  # 替换为你exe文件所在的目录
