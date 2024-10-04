@@ -5,6 +5,8 @@ import random
 import copy
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
+global SMX_t_in, SMX_q_in, SMX_HyperPara, SMX_CapCurve, iniVol_SMX
+
 def interpolate(x, x_array, y_array):
     if x <= x_array[0]:
         return y_array[0]
@@ -87,6 +89,11 @@ def CalculateT(volTarg, tt, qq, iLastKeyP, iReservoir, dischargeMod, iPlan):
         stop_flag = 0
         while stop_flag == 0:
             t2 += dt
+            if t2 > tt[-1]:
+                print(f"错误：t2 ({t2}) 超过了 tt 的最后一个时刻 ({tt[-1]})。")
+                print(f"当前 iLastKeyP: {iLastKeyP}, iPlan: {iPlan}")
+                return None  # 或者抛出一个异常
+
             q2 = interpolate(t2, tt, qq)
             vol -= dt * (q2 + q1) / 2
             vol += dt * SMX_Plan[iPlan]['q'][iLastKeyP - 1]
@@ -237,7 +244,12 @@ for i in range(planNum):
     XLD_Plan[i]['t'][5] = SMX_Plan[i]['t'][2]
     #随机生成对接三门峡流量时的控制流量
     XLD_Plan[i]['q'][5] = random.uniform(SMX_Plan[i]['q'][2], XLD_Plan[i]['q'][2])
-
+    #随机生成三门峡水库泄空冲刷的结束时刻
+    minWL_SMX = 288.85        #2020年三门峡水库最低水位是288.85米
+    WL_EndFlush = random.uniform(minWL_SMX, SMX_HyperPara['WlFldContr'])
+    vol_EndFlush = interpolate(WL_EndFlush, SMX_CapCurve['WL'], SMX_CapCurve['Vol'])
+    netOutflowVol = iniVol_SMX - vol_EndFlush
+    SMX_Plan[i]['t'][3] = CalculateT(netOutflowVol, SMX_t_in, SMX_q_in, 3, 2, 1, i)
 
 # 定义可执行文件所在的目录和文件名
 exe_directory = r"E:\一维计算结果\小浪底与下游联合\XLDDS06\1D_RiverNet_OCTC"  # 替换为你exe文件所在的目录
