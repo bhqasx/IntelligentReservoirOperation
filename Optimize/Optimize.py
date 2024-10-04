@@ -22,6 +22,7 @@ def interpolate(x, x_array, y_array):
 #定义一个名为CalculateT的函数，计算达到指定净出流水量所需的时间，从main.js中改写来
 def CalculateT(volTarg, tt, qq, iLastKeyP, iReservoir, dischargeMod, iPlan):
     t2 = 0
+    dt = 6
     if iReservoir == 1:  # XLD reservoir
         t1 = XLD_Plan[iPlan]['t'][iLastKeyP - 1]
         i = next(i for i, t in enumerate(tt) if t >= t1)
@@ -38,7 +39,6 @@ def CalculateT(volTarg, tt, qq, iLastKeyP, iReservoir, dischargeMod, iPlan):
         
         t2 = t1
         q2 = q1
-        dt = 12
         stop_flag = 0
         while stop_flag == 0:
             t2 += dt
@@ -85,7 +85,6 @@ def CalculateT(volTarg, tt, qq, iLastKeyP, iReservoir, dischargeMod, iPlan):
         
         t2 = t1
         q2 = q1
-        dt = 12
         stop_flag = 0
         while stop_flag == 0:
             t2 += dt
@@ -103,6 +102,36 @@ def CalculateT(volTarg, tt, qq, iLastKeyP, iReservoir, dischargeMod, iPlan):
                 stop_flag = 1
     
     return t2, True
+
+def CalculateRefillT(volChange, tt, qq, tCtrl, qCtrl):
+    # 得到tCtrl的最后一个值
+    tEnd = tCtrl[-1]
+    # 找到tEnd之前tt中最近的时间的下标
+    i = next(i for i, t in enumerate(tt) if t >= tEnd)
+    
+    vol_in = 0
+    for j in range(i - 1):
+        vol_in += (tt[j + 1] - tt[j]) * (qq[j + 1] + qq[j]) / 2
+    
+    q1 = interpolate(tEnd, tt, qq)
+    vol_in += (tEnd - tt[i - 1]) * (q1 + qq[i - 1]) / 2
+
+    vol_out = 0
+    iPre = 8  # 也许改为len(tCtrl)-4更通用？
+    for j in range(1, iPre):
+        vol_out += (tCtrl[j] - tCtrl[j - 1]) * (qCtrl[j] + qCtrl[j - 1]) / 2
+    
+    vol_out = volChange * 10**8 / 3600 + vol_in - vol_out
+    tPre = tCtrl[iPre - 1]
+    qPre = qCtrl[iPre - 1]
+    qCurrent = qCtrl[iPre]
+    tNext = tCtrl[iPre + 2]
+    qNext = (qCtrl[iPre + 2] + qCtrl[iPre + 1]) / 2
+    
+    # 求解vol_out = (t - tPre) * (qPre + qCurrent) / 2 + (tNext - t) * qNext
+    t = (vol_out + (qCurrent + qPre) * tPre / 2 - qNext * tNext) / ((qCurrent + qPre) / 2 - qNext)
+
+    return t
 
 # 读取文件XLD_keypoints.json和SMX_keypoints.json，如果这两个文件不在当前目录下，则从上一级目录中寻找
 # 找到后，将数据分别存入XLD_KeyP和SMX_KeyP
@@ -218,6 +247,14 @@ def generate_from_SMX(i, xld_plan, smx_plan):
     if smx_plan['t'][4] > SMX_t_in[-1]:
         return xld_plan, smx_plan, False
     
+    # 结束时刻暂时采用交互式方案生成器输入值，下面计算小浪底开始回蓄时刻
+    vol_210 = interpolate(210, XLD_CapCurve['WL'], XLD_CapCurve['Vol'])
+    netOutflowVol = iniVol_XLD - (vol_210 + XLD_HyperPara['volWatSupply'])
+    xld_plan['t'][8] = CalculateRefillT(netOutflowVol, XLD_t_in, XLD_q_in, xld_plan['t'], xld_plan['q'])
+    # 如果该时刻大于xld_plan的最后时刻，或小于xld_plan['t'][7],则返回false
+    if xld_plan['t'][8] > xld_plan['t'][-1] or xld_plan['t'][8] < xld_plan['t'][7]:
+        return xld_plan, smx_plan, False
+    xld_plan['t'][9] = xld_plan['t'][8]
 
     return xld_plan, smx_plan, True
 
