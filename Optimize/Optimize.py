@@ -197,6 +197,7 @@ def generate_from_SMX(i, xld_plan, smx_plan):
     
     # 随机生成对接三门峡流量时的控制流量
     xld_plan['q'][5] = random.uniform(smx_plan['q'][2], xld_plan['q'][2])
+    xld_plan['q'][6] = xld_plan['q'][5]
     
     # 随机生成三门峡水库泄空冲刷的结束时刻
     minWL_SMX = 288.85  # 2020年三门峡水库最低水位是288.85米
@@ -209,7 +210,15 @@ def generate_from_SMX(i, xld_plan, smx_plan):
     # 如果该时刻大于SMX_t_in的最后一个时刻，则返回
     if smx_plan['t'][3] > SMX_t_in[-1]:
         return xld_plan, smx_plan, False
+    xld_plan['t'][6] = smx_plan['t'][3]
+    xld_plan['t'][7] = xld_plan['t'][6]
+
+    # 计算三门峡开始回蓄时刻
+    smx_plan['t'][4] = smx_plan['t'][3] + 24
+    if smx_plan['t'][4] > SMX_t_in[-1]:
+        return xld_plan, smx_plan, False
     
+
     return xld_plan, smx_plan, True
 
 
