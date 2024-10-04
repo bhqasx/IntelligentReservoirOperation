@@ -45,7 +45,7 @@ def CalculateT(volTarg, tt, qq, iLastKeyP, iReservoir, dischargeMod, iPlan):
             if t2 > tt[-1]:
                 print(f"错误：t2 ({t2}) 超过了 tt 的最后一个时刻 ({tt[-1]})。")
                 print(f"当前 iLastKeyP: {iLastKeyP}, iPlan: {iPlan}")
-                return None  # 或者抛出一个异常
+                return t2, False
 
             q2 = interpolate(t2, tt, qq)
             vol -= dt * (q2 + q1) / 2
@@ -92,7 +92,7 @@ def CalculateT(volTarg, tt, qq, iLastKeyP, iReservoir, dischargeMod, iPlan):
             if t2 > tt[-1]:
                 print(f"错误：t2 ({t2}) 超过了 tt 的最后一个时刻 ({tt[-1]})。")
                 print(f"当前 iLastKeyP: {iLastKeyP}, iPlan: {iPlan}")
-                return None  # 或者抛出一个异常
+                return t2, False
 
             q2 = interpolate(t2, tt, qq)
             vol -= dt * (q2 + q1) / 2
@@ -102,7 +102,7 @@ def CalculateT(volTarg, tt, qq, iLastKeyP, iReservoir, dischargeMod, iPlan):
             if vol * 3600 / 10**8 > volTarg:
                 stop_flag = 1
     
-    return t2
+    return t2, True
 
 # 读取文件XLD_keypoints.json和SMX_keypoints.json，如果这两个文件不在当前目录下，则从上一级目录中寻找
 # 找到后，将数据分别存入XLD_KeyP和SMX_KeyP
@@ -177,6 +177,43 @@ except FileNotFoundError as e:
 except json.JSONDecodeError as e:
     print(f"Error decoding JSON: {e}")
 
+def generate_from_SMX(i, xld_plan, smx_plan):
+    global SMX_t_in, SMX_q_in, SMX_HyperPara, SMX_CapCurve, iniVol_SMX
+    
+    # 随机生成三门峡的起涨时刻
+    smx_plan['t'][1] = random.uniform(xld_plan['t'][3], SMX_t_in[-1])
+    
+    # 计算三门峡水库达到泄空流量的时刻
+    q1 = interpolate(smx_plan['t'][1], SMX_t_in, SMX_q_in)
+    q2 = smx_plan['q'][2]
+    qIncrRate = 134.8
+    smx_plan['t'][2] = smx_plan['t'][1] + (q2 - q1) / qIncrRate
+    # 如果该时刻大于SMX_t_in的最后一个时刻，则返回
+    if smx_plan['t'][2] > SMX_t_in[-1]:
+        return xld_plan, smx_plan, False
+
+    # 更新XLD_Plan
+    xld_plan['t'][5] = smx_plan['t'][2]
+    
+    # 随机生成对接三门峡流量时的控制流量
+    xld_plan['q'][5] = random.uniform(smx_plan['q'][2], xld_plan['q'][2])
+    
+    # 随机生成三门峡水库泄空冲刷的结束时刻
+    minWL_SMX = 288.85  # 2020年三门峡水库最低水位是288.85米
+    WL_EndFlush = random.uniform(minWL_SMX, SMX_HyperPara['WlFldContr'])
+    vol_EndFlush = interpolate(WL_EndFlush, SMX_CapCurve['WL'], SMX_CapCurve['Vol'])
+    netOutflowVol = iniVol_SMX - vol_EndFlush
+    smx_plan['t'][3], flag= CalculateT(netOutflowVol, SMX_t_in, SMX_q_in, 3, 2, 1, i)
+    if flag == False:
+        return xld_plan, smx_plan, False
+    # 如果该时刻大于SMX_t_in的最后一个时刻，则返回
+    if smx_plan['t'][3] > SMX_t_in[-1]:
+        return xld_plan, smx_plan, False
+    
+    return xld_plan, smx_plan, True
+
+
+
 iniWL_XLD = 250.8
 #在终端提示输入小浪底初始水位，并显示当前默认输入值是iniWL_XLD，如果用户输入为空，则使用默认值
 iniWL_XLD = input(f"请输入小浪底初始水位: (默认值: {iniWL_XLD})")
@@ -229,27 +266,22 @@ for i in range(planNum):
     #计算达到小浪底汛限水位的时间
     Vol_FldContr = interpolate(XLD_HyperPara['WlFldContr'], XLD_CapCurve['WL'], XLD_CapCurve['Vol'])
     netOutflowVol = iniVol_XLD - Vol_FldContr
-    XLD_Plan[i]['t'][3] = CalculateT(netOutflowVol, XLD_t_in, XLD_q_in, 3, 1, 1, i)
+    XLD_Plan[i]['t'][3], flag = CalculateT(netOutflowVol, XLD_t_in, XLD_q_in, 3, 1, 1, i)
     #计算达到小浪底对接水位的时间
     Vol_StartReg = interpolate(XLD_HyperPara['WlReg'], XLD_CapCurve['WL'], XLD_CapCurve['Vol'])
     netOutflowVol = iniVol_XLD - Vol_StartReg
-    XLD_Plan[i]['t'][4] = CalculateT(netOutflowVol, XLD_t_in, XLD_q_in, 4, 1, 2, i)
-    #随机生成三门峡的起涨时刻，最小值为XLD_Plan[i]['t'][3]，最大值为为三门峡流量过程的最后一个时刻
-    SMX_Plan[i]['t'][1] = random.uniform(XLD_Plan[i]['t'][3], SMX_t_in[-1])
-    #计算三门峡水库达到泄空流量的时刻
-    q1 = interpolate(SMX_Plan[i]['t'][1], SMX_t_in, SMX_q_in)
-    q2 = SMX_Plan[i]['q'][2]
-    qIncrRate = 134.8
-    SMX_Plan[i]['t'][2] = SMX_Plan[i]['t'][1] + (q2 - q1) / qIncrRate
-    XLD_Plan[i]['t'][5] = SMX_Plan[i]['t'][2]
-    #随机生成对接三门峡流量时的控制流量
-    XLD_Plan[i]['q'][5] = random.uniform(SMX_Plan[i]['q'][2], XLD_Plan[i]['q'][2])
-    #随机生成三门峡水库泄空冲刷的结束时刻
-    minWL_SMX = 288.85        #2020年三门峡水库最低水位是288.85米
-    WL_EndFlush = random.uniform(minWL_SMX, SMX_HyperPara['WlFldContr'])
-    vol_EndFlush = interpolate(WL_EndFlush, SMX_CapCurve['WL'], SMX_CapCurve['Vol'])
-    netOutflowVol = iniVol_SMX - vol_EndFlush
-    SMX_Plan[i]['t'][3] = CalculateT(netOutflowVol, SMX_t_in, SMX_q_in, 3, 2, 1, i)
+    XLD_Plan[i]['t'][4], flag = CalculateT(netOutflowVol, XLD_t_in, XLD_q_in, 4, 1, 2, i)
+    #三门峡t2之后的生成过程
+    attempts = 0
+    max_attempts = 100  # 设置最大尝试次数，以防无限循环
+    while True:
+        XLD_Plan[i], SMX_Plan[i], flag = generate_from_SMX(i, XLD_Plan[i], SMX_Plan[i])
+        if flag:
+            break
+        attempts += 1
+        if attempts >= max_attempts:
+            print(f"Plan {i}: Failed to generate SMX plan after {max_attempts} attempts")
+            break
 
 # 定义可执行文件所在的目录和文件名
 exe_directory = r"E:\一维计算结果\小浪底与下游联合\XLDDS06\1D_RiverNet_OCTC"  # 替换为你exe文件所在的目录
