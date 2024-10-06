@@ -230,6 +230,12 @@ def generate_from_SMX(i, xld_plan, smx_plan):
     
     # 随机生成三门峡水库泄空冲刷的结束时刻
     minWL_SMX = 288.85  # 2020年三门峡水库最低水位是288.85米
+    # 如果minWL_SMX小于SMX_CapCurve['WL']的第一个值，则提示并暂停
+    if minWL_SMX < SMX_CapCurve['WL'][0]:
+        print(f"Error: minWL_SMX ({minWL_SMX}) is less than the first value of SMX_CapCurve['WL'] ({SMX_CapCurve['WL'][0]})")
+        #暂停
+        input("Press Enter to continue...")
+        
     WL_EndFlush = random.uniform(minWL_SMX, SMX_HyperPara['WlFldContr'])
     vol_EndFlush = interpolate(WL_EndFlush, SMX_CapCurve['WL'], SMX_CapCurve['Vol'])
     netOutflowVol = iniVol_SMX - vol_EndFlush
