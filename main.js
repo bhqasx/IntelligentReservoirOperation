@@ -475,6 +475,19 @@ fetch('Xiaolangdi.json')
       if (volWatSupply === '') {
         alert('请输入小浪底期末可供水量');
       } else {
+        xx = SMX.CapCurve.WL;
+        yy = SMX.CapCurve.Vol;
+        x = SMX["WaterLevel"][0];
+        VolIni = interpolate(xx, yy, x);
+        x = document.getElementById('WL-FloodControl-SMX').value;
+        var Vol_FldContr_SMX = interpolate(xx, yy, x);
+        netOutflowVol = VolIni - Vol_FldContr_SMX;
+        inputsT_SMX[5].value = CalculateT(netOutflowVol, SMX.t, SMX.Inflow, 5, 2, 1);
+        SMX_t[5] = Number(inputsT_SMX[5].value);
+        inputsT_SMX[6].value = SMX_t[5];
+        SMX_t[6] = Number(SMX_t[5]);  
+
+      
         var xx = XLD.CapCurve.WL;
         var yy = XLD.CapCurve.Vol;
         var x = XLD["WaterLevel"][0];
@@ -485,19 +498,6 @@ fetch('Xiaolangdi.json')
         XLD_t[8] = Number(inputsT[8].value);
         inputsT[9].value = XLD_t[8];
         XLD_t[9] = XLD_t[8];
-
-        xx = SMX.CapCurve.WL;
-        yy = SMX.CapCurve.Vol;
-        x = SMX["WaterLevel"][0];
-        VolIni = interpolate(xx, yy, x);
-        x = document.getElementById('WL-FloodControl-SMX').value;
-        var Vol_FldContr_SMX = interpolate(xx, yy, x);
-        netOutflowVol = VolIni - Vol_FldContr_SMX;
-        inputsT_SMX[5].value = CalculateT(netOutflowVol, SMX.t, SMX.Inflow, 5, 2, 1);
-        SMX_t[5] = Number(inputsT_SMX[5].value);
-
-        inputsT_SMX[6].value = SMX_t[5];
-        SMX_t[6] = Number(SMX_t[5]);
 
         inputsT[10].style.borderColor = '';
       }
