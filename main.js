@@ -213,7 +213,7 @@ fetch('Xiaolangdi.json')
           },
           {
             label: 'Water Level',
-            data: XLD["Water level"],
+            data: XLD["WaterLevel"],
             yAxisID: 'yAxis2',
           }
         ]
@@ -273,7 +273,7 @@ fetch('Xiaolangdi.json')
             },
             {
               label: 'Water Level',
-              data: SMX["Water level"],
+              data: SMX["WaterLevel"],
               yAxisID: 'yAxisSMX2',
             }
           ]
@@ -403,7 +403,7 @@ fetch('Xiaolangdi.json')
       //计算现有水量
       var xx = XLD.CapCurve.WL;
       var yy = XLD.CapCurve.Vol;
-      var x = XLD["Water level"][0];
+      var x = XLD["WaterLevel"][0];
       var VolIni = interpolate(xx, yy, x);      //调用interpolate函数
       //读取id为WL-FloodControl的input的值
       WlFldContr_XLD = document.getElementById('WL-FloodControl').value;
@@ -431,7 +431,7 @@ fetch('Xiaolangdi.json')
       } else {
         var xx = XLD.CapCurve.WL;
         var yy = XLD.CapCurve.Vol;
-        var x = XLD["Water level"][0];
+        var x = XLD["WaterLevel"][0];
         var VolIni = interpolate(xx, yy, x);      //调用interpolate函数                
         var Vol_StartReg = interpolate(xx, yy, WlReg_XLD);
         var netOutflowVol = VolIni - Vol_StartReg;     //净流出水量
@@ -477,7 +477,7 @@ fetch('Xiaolangdi.json')
       } else {
         var xx = XLD.CapCurve.WL;
         var yy = XLD.CapCurve.Vol;
-        var x = XLD["Water level"][0];
+        var x = XLD["WaterLevel"][0];
         var VolIni = interpolate(xx, yy, x);
         var vol_210 = interpolate(xx, yy, 210);
         var netOutflowVol = VolIni - (vol_210 + Number(volWatSupply));
@@ -488,7 +488,7 @@ fetch('Xiaolangdi.json')
 
         xx = SMX.CapCurve.WL;
         yy = SMX.CapCurve.Vol;
-        x = SMX["Water level"][0];
+        x = SMX["WaterLevel"][0];
         VolIni = interpolate(xx, yy, x);
         x = document.getElementById('WL-FloodControl-SMX').value;
         var Vol_FldContr_SMX = interpolate(xx, yy, x);
