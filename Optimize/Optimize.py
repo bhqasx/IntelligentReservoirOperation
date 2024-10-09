@@ -253,6 +253,14 @@ def generate_from_SMX(i, xld_plan, smx_plan):
     if smx_plan['t'][4] > SMX_t_in[-1]:
         return xld_plan, smx_plan, False
     
+    # 计算三门峡水库回蓄结束时刻
+    vol_FldContr_SMX = interpolate(SMX_HyperPara['WlFldContr'], SMX_CapCurve['WL'], SMX_CapCurve['Vol'])
+    netOutflowVol = iniVol_SMX - vol_FldContr_SMX
+    smx_plan['t'][5], flag = CalculateT(netOutflowVol, SMX_t_in, SMX_q_in, 5, 2, 1, i)
+    if flag == False:
+        return xld_plan, smx_plan, False
+    smx_plan['t'][6] = smx_plan['t'][5]
+    
     # 结束时刻暂时采用交互式方案生成器输入值，下面计算小浪底开始回蓄时刻
     vol_210 = interpolate(210, XLD_CapCurve['WL'], XLD_CapCurve['Vol'])
     netOutflowVol = iniVol_XLD - (vol_210 + XLD_HyperPara['volWatSupply'])
@@ -261,14 +269,6 @@ def generate_from_SMX(i, xld_plan, smx_plan):
     if xld_plan['t'][8] > xld_plan['t'][-1] or xld_plan['t'][8] < xld_plan['t'][7]:
         return xld_plan, smx_plan, False
     xld_plan['t'][9] = xld_plan['t'][8]
-
-    # 计算三门峡水库回蓄结束时刻
-    vol_FldContr_SMX = interpolate(SMX_HyperPara['WlFldContr'], SMX_CapCurve['WL'], SMX_CapCurve['Vol'])
-    netOutflowVol = iniVol_SMX - vol_FldContr_SMX
-    smx_plan['t'][5], flag = CalculateT(netOutflowVol, SMX_t_in, SMX_q_in, 5, 2, 1, i)
-    if flag == False:
-        return xld_plan, smx_plan, False
-    smx_plan['t'][6] = smx_plan['t'][5]
 
     return xld_plan, smx_plan, True
 
