@@ -38,8 +38,12 @@ inputs_all.forEach(input => {
 
 //定义一个函数，该函数接收xx,yy两个数组和x一个数值，返回y,首先找到xx中距离x最近的两个数，然后用这两个数对应的yy值进行线性插值
 function interpolate(xx, yy, x) {
+  //如果x大于等于xx中最后一个数，则返回yy中最后一个数
+  if (x >= xx[xx.length - 1]) {
+    return yy[yy.length - 1];
+  }
   var i = 0;
-  while (xx[i] < x) {
+  while (xx[i] <= x) {
     i++;
   }
   var x1 = xx[i - 1];
@@ -153,21 +157,66 @@ function CalculateT(volTarg, tt, qq, iLastKeyP, iReservoir, dischargeMod) {
 }
 
 //计算开始回蓄的时间
-function CalculateRefillT(volChange, tt, qq, tCtrl, qCtrl) {
+function CalculateRefillT(volChange, tt, qq, ttNat, qqNat, tCtrl, qCtrl) {
+  //ttNat与qqNat是天然来流过程
   var t = 0;
-  //得到tCtrl的最后一个值
-  var tEnd = tCtrl[tCtrl.length - 1];
-  //找到tEnd之前tt中最近的时间的下标
+  
+  //ttNat是递增的，找出其中小于tt[1]的最后一个值的下标
   var i = 0;
-  while (tt[i] < tEnd) {
+  while (ttNat[i] < tt[1]) {
     i++;
   }
-  var vol_in = 0;
-  for (var j = 0; j < i - 1; j++) {
-      vol_in += (tt[j + 1] - tt[j]) * (qq[j + 1] + qq[j]) / 2;
+  //在ttNat[i-1]和ttNat[i]之间对qqNat插值得到tt[1]时刻的流量
+  var q1 = interpolate(ttNat, qqNat, tt[1]);
+  //找出ttNat中大于tt[0]的第一个值的下标
+  var j = 0;
+  while (ttNat[j] < tt[0]) {
+    j++;
   }
-  var q1 = interpolate(tt, qq, tEnd);
-  vol_in += (tEnd - tt[i - 1]) * (q1 + qq[i - 1]) / 2;
+  //在ttNat[j-1]和ttNat[j]之间对qqNat插值得到tt[0]时刻的流量
+  var q0 = interpolate(ttNat, qqNat, tt[0]);
+  //计算从tt[0]到tt[1]的入库水量，这两时刻间的流量使用qqNat中对应时刻的流量
+  var vol_in = (ttNat[j] - tt[0]) * (q0 + qqNat[j]) / 2;
+  //将ttNat[j]到ttNat[i-1]的入库水量累加到vol
+  for (var k = j; k < i - 1; k++) {
+    vol_in += (ttNat[k + 1] - ttNat[k]) * (qqNat[k + 1] + qqNat[k]) / 2;
+  }
+  
+  vol_in += (tt[1] - ttNat[i - 1]) * (q1 + qqNat[i - 1]) / 2;
+  
+  //将tt[1]到tt[6]的入库水量累加到vol
+  for (var k = 1; k < 6; k++) {
+    vol_in += (tt[k + 1] - tt[k]) * (qq[k + 1] + qq[k]) / 2;
+  }
+
+  //如果tt[6]>tCtrl最后时刻，则弹窗提示，否则将tt[6]到tCtrl最后时刻的入库水量累加到vol
+  if (tt[6] > tCtrl[tCtrl.length - 1]) {
+    alert('三门峡最后时刻大于小浪底最大调度时刻，请重新输入');
+  } else {
+    //tt[6]到tCtrl最后时刻的入库水量都用qqNat中对应时刻的流量
+    //先找到ttNat中大于tt[6]的第一个值的下标
+    var k = 0;
+    while (ttNat[k] < tt[6]) {
+      k++;
+    }
+    //在ttNat[k-1]和ttNat[k]之间对qqNat插值得到tt[6]时刻的流量
+    var q6 = interpolate(ttNat, qqNat, tt[6]);
+    //将tt[6]到ttNat[k]间的入库水量累加到vol
+    vol_in += (ttNat[k] - tt[6]) * (q6 + qqNat[k - 1]) / 2;
+    //找到ttNat中小于tCtrl最后时刻的最后一个值的下标
+    var k2 = ttNat.length - 1;
+    while (ttNat[k2] > tCtrl[tCtrl.length - 1]) {
+      k2--;
+    }
+    //将ttNat[k]到ttNat[k2]的入库水量累加到vol
+    for (var k = k; k < k2; k++) {
+      vol_in += (ttNat[k + 1] - ttNat[k]) * (qqNat[k + 1] + qqNat[k]) / 2;
+    }
+    //在ttNat[k2]和ttNat[k2+1]之间对qqNat插值得到tCtrl最后时刻的流量
+    var qEnd = interpolate(ttNat, qqNat, tCtrl[tCtrl.length - 1]);
+    //将ttNat[k2]到tCtrl最后时刻的入库水量累加到vol
+    vol_in += (tCtrl[tCtrl.length - 1] - ttNat[k2]) * (qEnd + qqNat[k2]) / 2;
+  }
 
   var vol_out = 0;
   var iPre = 8;    //也许改为tCtrl.length-4更通用？
@@ -475,17 +524,6 @@ fetch('Xiaolangdi.json')
       if (volWatSupply === '') {
         alert('请输入小浪底期末可供水量');
       } else {
-        var xx = XLD.CapCurve.WL;
-        var yy = XLD.CapCurve.Vol;
-        var x = XLD["WaterLevel"][0];
-        var VolIni = interpolate(xx, yy, x);
-        var vol_210 = interpolate(xx, yy, 210);
-        var netOutflowVol = VolIni - (vol_210 + Number(volWatSupply));
-        inputsT[8].value = CalculateRefillT(netOutflowVol, XLD.t, XLD.Inflow, XLD_t, XLD_q);
-        XLD_t[8] = Number(inputsT[8].value);
-        inputsT[9].value = XLD_t[8];
-        XLD_t[9] = XLD_t[8];
-
         xx = SMX.CapCurve.WL;
         yy = SMX.CapCurve.Vol;
         x = SMX["WaterLevel"][0];
@@ -495,9 +533,20 @@ fetch('Xiaolangdi.json')
         netOutflowVol = VolIni - Vol_FldContr_SMX;
         inputsT_SMX[5].value = CalculateT(netOutflowVol, SMX.t, SMX.Inflow, 5, 2, 1);
         SMX_t[5] = Number(inputsT_SMX[5].value);
-
         inputsT_SMX[6].value = SMX_t[5];
-        SMX_t[6] = Number(SMX_t[5]);
+        SMX_t[6] = Number(SMX_t[5]);  
+
+      
+        var xx = XLD.CapCurve.WL;
+        var yy = XLD.CapCurve.Vol;
+        var x = XLD["WaterLevel"][0];
+        var VolIni = interpolate(xx, yy, x);
+        var vol_210 = interpolate(xx, yy, 210);
+        var netOutflowVol = VolIni - (vol_210 + Number(volWatSupply));
+        inputsT[8].value = CalculateRefillT(netOutflowVol, SMX_t, SMX_q, SMX.t, SMX.Inflow, XLD_t, XLD_q);
+        XLD_t[8] = Number(inputsT[8].value);
+        inputsT[9].value = XLD_t[8];
+        XLD_t[9] = XLD_t[8];
 
         inputsT[10].style.borderColor = '';
       }
