@@ -158,6 +158,8 @@ function CalculateT(volTarg, tt, qq, iLastKeyP, iReservoir, dischargeMod) {
 
 //计算开始回蓄的时间
 function CalculateRefillT(volChange, tt, qq, ttNat, qqNat, tCtrl, qCtrl) {
+  var qqCopy = qq.slice();
+  
   //ttNat与qqNat是天然来流过程
   var t = 0;
   
@@ -184,9 +186,12 @@ function CalculateRefillT(volChange, tt, qq, ttNat, qqNat, tCtrl, qCtrl) {
   
   vol_in += (tt[1] - ttNat[i - 1]) * (q1 + qqNat[i - 1]) / 2;
   
-  //将tt[1]到tt[6]的入库水量累加到vol
-  for (var k = 1; k < 6; k++) {
-    vol_in += (tt[k + 1] - tt[k]) * (qq[k + 1] + qq[k]) / 2;
+  //在ttNat和qqNat上插值计算tt[1]时刻对应的qq[1]
+  qqCopy[1] = interpolate(ttNat, qqNat, tt[1]);
+
+  //将tt[1]到tt[6]的入库水量累加到vol，注意qq[6]是null，tt[5]和tt[6]相等
+  for (var k = 1; k < 5; k++) {
+    vol_in += (tt[k + 1] - tt[k]) * (qqCopy[k + 1] + qqCopy[k]) / 2;
   }
 
   //如果tt[6]>tCtrl最后时刻，则弹窗提示，否则将tt[6]到tCtrl最后时刻的入库水量累加到vol
@@ -202,7 +207,7 @@ function CalculateRefillT(volChange, tt, qq, ttNat, qqNat, tCtrl, qCtrl) {
     //在ttNat[k-1]和ttNat[k]之间对qqNat插值得到tt[6]时刻的流量
     var q6 = interpolate(ttNat, qqNat, tt[6]);
     //将tt[6]到ttNat[k]间的入库水量累加到vol
-    vol_in += (ttNat[k] - tt[6]) * (q6 + qqNat[k - 1]) / 2;
+    vol_in += (ttNat[k] - tt[6]) * (q6 + qqNat[k]) / 2;
     //找到ttNat中小于tCtrl最后时刻的最后一个值的下标
     var k2 = ttNat.length - 1;
     while (ttNat[k2] > tCtrl[tCtrl.length - 1]) {

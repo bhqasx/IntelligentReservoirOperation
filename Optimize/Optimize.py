@@ -103,18 +103,65 @@ def CalculateT(volTarg, tt, qq, iLastKeyP, iReservoir, dischargeMod, iPlan):
     
     return t2, True
 
-def CalculateRefillT(volChange, tt, qq, tCtrl, qCtrl):
-    # 得到tCtrl的最后一个值
-    tEnd = tCtrl[-1]
-    # 找到tEnd之前tt中最近的时间的下标
-    i = next(i for i, t in enumerate(tt) if t >= tEnd)
-    
+def CalculateRefillT(volChange, tt, qq, ttNat, qqNat, tCtrl, qCtrl):  
+    qqCopy = qq.copy()
+    #ttNat与qqNat是天然来流过程
+    t = 0
+
     vol_in = 0
-    for j in range(i - 1):
-        vol_in += (tt[j + 1] - tt[j]) * (qq[j + 1] + qq[j]) / 2
+    # ttNat是递增的，找出其中小于tt[1]的最后一个值的下标
+    i = next(i for i, t in enumerate(ttNat) if t >= tt[1]) - 1
     
-    q1 = interpolate(tEnd, tt, qq)
-    vol_in += (tEnd - tt[i - 1]) * (q1 + qq[i - 1]) / 2
+    # 在ttNat[i]和ttNat[i+1]之间对qqNat插值得到tt[1]时刻的流量
+    q1 = interpolate(tt[1], ttNat, qqNat)
+    
+    # 找出ttNat中大于tt[0]的第一个值的下标
+    j = next(j for j, t in enumerate(ttNat) if t >= tt[0])
+    
+    # 在ttNat[j-1]和ttNat[j]之间对qqNat插值得到tt[0]时刻的流量
+    q0 = interpolate(tt[0], ttNat, qqNat)
+    
+    # 计算从tt[0]到tt[1]的入库水量，这两时刻间的流量使用qqNat中对应时刻的流量
+    vol_in = (ttNat[j] - tt[0]) * (q0 + qqNat[j]) / 2
+    
+    # 将ttNat[j]到ttNat[i]的入库水量累加到vol_in
+    for k in range(j, i):
+        vol_in += (ttNat[k + 1] - ttNat[k]) * (qqNat[k + 1] + qqNat[k]) / 2
+    
+    vol_in += (tt[1] - ttNat[i]) * (q1 + qqNat[i]) / 2
+    
+    # 在ttNat和qqNat上插值计算tt[1]时刻对应的qq[1]
+    qqCopy[1] = interpolate(tt[1], ttNat, qqNat)
+
+    # 将tt[1]到tt[6]的入库水量累加到vol_in，注意qq[6]是null，tt[5]和tt[6]相等
+    for k in range(1, 5):
+        vol_in += (tt[k + 1] - tt[k]) * (qqCopy[k + 1] + qqCopy[k]) / 2
+
+    # 如果tt[6]>tCtrl最后时刻，则弹窗提示，否则将tt[6]到tCtrl最后时刻的入库水量累加到vol_in
+    if tt[6] > tCtrl[-1]:
+        print('三门峡最后时刻大于小浪底最大调度时刻，请重新输入')
+        return None
+    else:
+        # tt[6]到tCtrl最后时刻的入库水量都用qqNat中对应时刻的流量
+        # 先找到ttNat中大于tt[6]的第一个值的下标
+        k = 0
+        while ttNat[k] < tt[6]:
+            k += 1
+        # 在ttNat[k-1]和ttNat[k]之间对qqNat插值得到tt[6]时刻的流量
+        q6 = interpolate(tt[6], ttNat, qqNat)
+        # 将tt[6]到ttNat[k]间的入库水量累加到vol_in
+        vol_in += (ttNat[k] - tt[6]) * (q6 + qqNat[k]) / 2
+        # 找到ttNat中小于tCtrl最后时刻的最后一个值的下标
+        k2 = len(ttNat) - 1
+        while ttNat[k2] > tCtrl[-1]:
+            k2 -= 1
+        # 将ttNat[k]到ttNat[k2]的入库水量累加到vol_in
+        for k in range(k, k2):
+            vol_in += (ttNat[k + 1] - ttNat[k]) * (qqNat[k + 1] + qqNat[k]) / 2
+        # 在ttNat[k2]和ttNat[k2+1]之间对qqNat插值得到tCtrl最后时刻的流量
+        qEnd = interpolate(tCtrl[-1], ttNat, qqNat)
+        # 将ttNat[k2]到tCtrl最后时刻的入库水量累加到vol_in
+        vol_in += (tCtrl[-1] - ttNat[k2]) * (qEnd + qqNat[k2]) / 2
 
     vol_out = 0
     iPre = 8  # 也许改为len(tCtrl)-4更通用？
@@ -264,7 +311,7 @@ def generate_from_SMX(i, xld_plan, smx_plan):
     # 结束时刻暂时采用交互式方案生成器输入值，下面计算小浪底开始回蓄时刻
     vol_210 = interpolate(210, XLD_CapCurve['WL'], XLD_CapCurve['Vol'])
     netOutflowVol = iniVol_XLD - (vol_210 + XLD_HyperPara['volWatSupply'])
-    xld_plan['t'][8] = CalculateRefillT(netOutflowVol, XLD_t_in, XLD_q_in, xld_plan['t'], xld_plan['q'])
+    xld_plan['t'][8] = CalculateRefillT(netOutflowVol, smx_plan['t'], smx_plan['q'], SMX_t_in, SMX_q_in, xld_plan['t'], xld_plan['q'])
     # 如果该时刻大于xld_plan的最后时刻，或小于xld_plan['t'][7],则返回false
     if xld_plan['t'][8] > xld_plan['t'][-1] or xld_plan['t'][8] < xld_plan['t'][7]:
         return xld_plan, smx_plan, False
