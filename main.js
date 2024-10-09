@@ -38,8 +38,12 @@ inputs_all.forEach(input => {
 
 //定义一个函数，该函数接收xx,yy两个数组和x一个数值，返回y,首先找到xx中距离x最近的两个数，然后用这两个数对应的yy值进行线性插值
 function interpolate(xx, yy, x) {
+  //如果x大于等于xx中最后一个数，则返回yy中最后一个数
+  if (x >= xx[xx.length - 1]) {
+    return yy[yy.length - 1];
+  }
   var i = 0;
-  while (xx[i] < x) {
+  while (xx[i] <= x) {
     i++;
   }
   var x1 = xx[i - 1];
@@ -172,17 +176,17 @@ function CalculateRefillT(volChange, tt, qq, ttNat, qqNat, tCtrl, qCtrl) {
   //在ttNat[j-1]和ttNat[j]之间对qqNat插值得到tt[0]时刻的流量
   var q0 = interpolate(ttNat, qqNat, tt[0]);
   //计算从tt[0]到tt[1]的入库水量，这两时刻间的流量使用qqNat中对应时刻的流量
-  var vol = (ttNat[j] - tt[0]) * (q0 + qqNat[j]) / 2;
+  var vol_in = (ttNat[j] - tt[0]) * (q0 + qqNat[j]) / 2;
   //将ttNat[j]到ttNat[i-1]的入库水量累加到vol
   for (var k = j; k < i - 1; k++) {
-    vol += (ttNat[k + 1] - ttNat[k]) * (qqNat[k + 1] + qqNat[k]) / 2;
+    vol_in += (ttNat[k + 1] - ttNat[k]) * (qqNat[k + 1] + qqNat[k]) / 2;
   }
   
-  vol += (tt[1] - ttNat[i - 1]) * (q1 + qqNat[i - 1]) / 2;
+  vol_in += (tt[1] - ttNat[i - 1]) * (q1 + qqNat[i - 1]) / 2;
   
   //将tt[1]到tt[6]的入库水量累加到vol
   for (var k = 1; k < 6; k++) {
-    vol += (tt[k + 1] - tt[k]) * (qq[k + 1] + qq[k]) / 2;
+    vol_in += (tt[k + 1] - tt[k]) * (qq[k + 1] + qq[k]) / 2;
   }
 
   //如果tt[6]>tCtrl最后时刻，则弹窗提示，否则将tt[6]到tCtrl最后时刻的入库水量累加到vol
@@ -190,6 +194,28 @@ function CalculateRefillT(volChange, tt, qq, ttNat, qqNat, tCtrl, qCtrl) {
     alert('三门峡最后时刻大于小浪底最大调度时刻，请重新输入');
   } else {
     //tt[6]到tCtrl最后时刻的入库水量都用qqNat中对应时刻的流量
+    //先找到ttNat中大于tt[6]的第一个值的下标
+    var k = 0;
+    while (ttNat[k] < tt[6]) {
+      k++;
+    }
+    //在ttNat[k-1]和ttNat[k]之间对qqNat插值得到tt[6]时刻的流量
+    var q6 = interpolate(ttNat, qqNat, tt[6]);
+    //将tt[6]到ttNat[k]间的入库水量累加到vol
+    vol_in += (ttNat[k] - tt[6]) * (q6 + qqNat[k - 1]) / 2;
+    //找到ttNat中小于tCtrl最后时刻的最后一个值的下标
+    var k2 = ttNat.length - 1;
+    while (ttNat[k2] > tCtrl[tCtrl.length - 1]) {
+      k2--;
+    }
+    //将ttNat[k]到ttNat[k2]的入库水量累加到vol
+    for (var k = k; k < k2; k++) {
+      vol_in += (ttNat[k + 1] - ttNat[k]) * (qqNat[k + 1] + qqNat[k]) / 2;
+    }
+    //在ttNat[k2]和ttNat[k2+1]之间对qqNat插值得到tCtrl最后时刻的流量
+    var qEnd = interpolate(ttNat, qqNat, tCtrl[tCtrl.length - 1]);
+    //将ttNat[k2]到tCtrl最后时刻的入库水量累加到vol
+    vol_in += (tCtrl[tCtrl.length - 1] - ttNat[k2]) * (qEnd + qqNat[k2]) / 2;
   }
 
   var vol_out = 0;
