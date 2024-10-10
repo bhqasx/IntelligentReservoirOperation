@@ -22,7 +22,7 @@ def interpolate(x, x_array, y_array):
 #定义一个名为CalculateT的函数，计算达到指定净出流水量所需的时间，从main.js中改写来
 def CalculateT(volTarg, tt, qq, iLastKeyP, iReservoir, dischargeMod, iPlan):
     t2 = 0
-    dt = 6
+    dt = 4
     if iReservoir == 1:  # XLD reservoir
         t1 = XLD_Plan[iPlan]['t'][iLastKeyP - 1]
         i = next(i for i, t in enumerate(tt) if t >= t1)
@@ -82,6 +82,9 @@ def CalculateT(volTarg, tt, qq, iLastKeyP, iReservoir, dischargeMod, iPlan):
         
         for j in range(2, iLastKeyP - 1):
             vol += (SMX_Plan[iPlan]['t'][j + 1] - SMX_Plan[iPlan]['t'][j]) * (SMX_Plan[iPlan]['q'][j + 1] + SMX_Plan[iPlan]['q'][j]) / 2
+
+        if iLastKeyP == 5:
+            print('vol:', vol * 3600 / 10**8)
         
         t2 = t1
         q2 = q1
@@ -98,8 +101,12 @@ def CalculateT(volTarg, tt, qq, iLastKeyP, iReservoir, dischargeMod, iPlan):
             vol += dt * SMX_Plan[iPlan]['q'][iLastKeyP - 1]
             t1 = t2
             q1 = q2
-            if vol * 3600 / 10**8 > volTarg:
-                stop_flag = 1
+            if iLastKeyP == 5:
+                if vol * 3600 / 10**8 < volTarg:
+                    stop_flag = 1
+            else:
+                if vol * 3600 / 10**8 > volTarg:
+                    stop_flag = 1
     
     return t2, True
 
@@ -257,7 +264,8 @@ def generate_from_SMX(i, xld_plan, smx_plan):
     global SMX_t_in, SMX_q_in, SMX_HyperPara, SMX_CapCurve, iniVol_SMX
     
     # 随机生成三门峡的起涨时刻
-    smx_plan['t'][1] = random.uniform(xld_plan['t'][3]-12, SMX_t_in[-1])
+    #smx_plan['t'][1] = random.uniform(xld_plan['t'][3]-12, SMX_t_in[-1])
+    smx_plan['t'][1] = random.uniform(xld_plan['t'][3]-36, xld_plan['t'][3]+72)
     
     # 计算三门峡水库达到泄空流量的时刻
     q1 = interpolate(smx_plan['t'][1], SMX_t_in, SMX_q_in)
@@ -276,7 +284,7 @@ def generate_from_SMX(i, xld_plan, smx_plan):
     xld_plan['q'][6] = xld_plan['q'][5]
     
     # 随机生成三门峡水库泄空冲刷的结束时刻
-    minWL_SMX = 291  # 2020年三门峡水库最低水位是288.85米
+    minWL_SMX = 304.8  # 2020年三门峡水库最低水位是288.85米
     # 如果minWL_SMX小于SMX_CapCurve['WL']的第一个值，则提示并暂停
     if minWL_SMX < SMX_CapCurve['WL'][0]:
         print(f"Error: minWL_SMX ({minWL_SMX}) is less than the first value of SMX_CapCurve['WL'] ({SMX_CapCurve['WL'][0]})")
@@ -296,7 +304,7 @@ def generate_from_SMX(i, xld_plan, smx_plan):
     xld_plan['t'][7] = xld_plan['t'][6]
 
     # 计算三门峡开始回蓄时刻
-    smx_plan['t'][4] = smx_plan['t'][3] + 24
+    smx_plan['t'][4] = smx_plan['t'][3] + 6
     if smx_plan['t'][4] > SMX_t_in[-1]:
         return xld_plan, smx_plan, False
     
