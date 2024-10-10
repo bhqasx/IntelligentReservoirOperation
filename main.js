@@ -139,7 +139,7 @@ function CalculateT(volTarg, tt, qq, iLastKeyP, iReservoir, dischargeMod) {
 
         t2 = t1;
         var q2 = q1;
-        var dt = 12;
+        var dt = 6;
         var stop_flag = 0;
         while (stop_flag === 0) {
             t2 = t2 + dt;
@@ -148,8 +148,15 @@ function CalculateT(volTarg, tt, qq, iLastKeyP, iReservoir, dischargeMod) {
             vol += dt * SMX_q[iLastKeyP - 1];
             t1 = t2;
             q1 = q2;
-            if (vol * 3600 / 10 ** 8 > volTarg) {
-                stop_flag = 1;
+
+            if (iLastKeyP === 5) {
+                if (vol * 3600 / 10 ** 8 < volTarg) {
+                    stop_flag = 1;
+                }
+            } else {
+                if (vol * 3600 / 10 ** 8 > volTarg) {
+                    stop_flag = 1;
+                }
             }
         }
     }
