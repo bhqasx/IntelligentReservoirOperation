@@ -581,6 +581,9 @@ fetch('Xiaolangdi.json')
       var q2 = this.value;
       var qIncrRate = 134.8;       //单位：m3/s/h
       inputsT_SMX[2].value = SMX_t[1] + (q2 - q1) / qIncrRate;
+      if (q2 < q1) {
+        alert('SMX_q[2]过小, 三门峡泄空冲刷流量小于入库流量');
+      }
       SMX_t[2] = Number(inputsT_SMX[2].value);
       if (SMX_t[2] < XLD_t[4]) {
         alert('SMX_t[2] < XLD_t[4]');
