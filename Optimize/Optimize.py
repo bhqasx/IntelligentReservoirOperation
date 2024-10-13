@@ -265,7 +265,9 @@ def generate_from_SMX(i, xld_plan, smx_plan):
     
     # 随机生成三门峡的起涨时刻
     #smx_plan['t'][1] = random.uniform(xld_plan['t'][3]-12, SMX_t_in[-1])
-    smx_plan['t'][1] = random.uniform(xld_plan['t'][3]-36, xld_plan['t'][3]+72)
+    # 计算xld_plan['t'][3]+72与xld_plan['t'][4]的最大值
+    t_max = max(xld_plan['t'][3]+72, xld_plan['t'][4])
+    smx_plan['t'][1] = random.uniform(xld_plan['t'][3]-36, t_max)
     
     # 计算三门峡水库达到泄空流量的时刻
     q1 = interpolate(smx_plan['t'][1], SMX_t_in, SMX_q_in)
