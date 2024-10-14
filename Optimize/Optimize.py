@@ -400,6 +400,14 @@ for i in range(planNum):
             print(f"Plan {i}: Failed to generate SMX plan after {max_attempts} attempts")
             break
 
+save_initial_plan = input("是否保存初始方案？(y/n)")
+if save_initial_plan == 'y':
+    # 将XLD_Plan和SMX_Plan保存为json文件
+    with open('XLD_Plan.json', 'w') as f:
+        json.dump(XLD_Plan, f)
+    with open('SMX_Plan.json', 'w') as f:
+        json.dump(SMX_Plan, f)        
+
 # 定义可执行文件所在的目录和文件名
 exe_directory = r"E:\一维计算结果\小浪底与下游联合\XLDDS06\1D_RiverNet_OCTC"  # 替换为你exe文件所在的目录
 executable = "1D_RiverNet_OCTC.exe"
