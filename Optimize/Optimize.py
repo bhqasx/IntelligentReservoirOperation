@@ -279,7 +279,7 @@ def generate_from_SMX(i, xld_plan, smx_plan):
         return xld_plan, smx_plan, False
 
     # 更新XLD_Plan
-    xld_plan['t'][5] = smx_plan['t'][2]
+    xld_plan['t'][5] = max(smx_plan['t'][2], xld_plan['t'][4] + 0.1)
     
     # 随机生成对接三门峡流量时的控制流量
     xld_plan['q'][5] = random.uniform(smx_plan['q'][2], xld_plan['q'][2])
