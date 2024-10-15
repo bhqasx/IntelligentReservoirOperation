@@ -400,6 +400,21 @@ for i in range(planNum):
             print(f"Plan {i}: Failed to generate SMX plan after {max_attempts} attempts")
             break
 
+# XLD_Plan和SMX_Plan中的t数组中，如果有两个相邻的t值相同，则将比较靠后的t值改为前一个t值加0.01
+for i in range(planNum):
+    for j in range(len(XLD_Plan[i]['t'])-1):
+        if XLD_Plan[i]['t'][j] == XLD_Plan[i]['t'][j+1]:
+            XLD_Plan[i]['t'][j+1] = XLD_Plan[i]['t'][j] + 0.01
+    for j in range(len(SMX_Plan[i]['t'])-1):
+        if SMX_Plan[i]['t'][j] == SMX_Plan[i]['t'][j+1]:
+            SMX_Plan[i]['t'][j+1] = SMX_Plan[i]['t'][j] + 0.01
+
+#将SMX_Plan中的q数组中的null值改为0
+for i in range(planNum):
+    for j in range(len(SMX_Plan[i]['q'])):
+        if SMX_Plan[i]['q'][j] is None:
+            SMX_Plan[i]['q'][j] = 0
+
 save_initial_plan = input("是否保存初始方案？(y/n)")
 if save_initial_plan == 'y':
     # 将XLD_Plan和SMX_Plan保存为json文件
