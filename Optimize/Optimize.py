@@ -374,7 +374,7 @@ for i in range(planNum):
 
 
 # 设置最迟开始时间
-t2_lim = 200
+t2_lim = XLD_KeyP['t'][0]+200
 
 for i in range(planNum):
     new_value = random.uniform(XLD_KeyP['t'][0], t2_lim)
