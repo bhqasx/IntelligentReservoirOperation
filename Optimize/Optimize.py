@@ -3,6 +3,7 @@ import os
 import json
 import random
 import copy
+import shutil
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 global SMX_t_in, SMX_q_in, SMX_HyperPara, SMX_CapCurve, iniVol_SMX
@@ -426,7 +427,15 @@ if save_initial_plan == 'y':
 # 定义可执行文件所在的目录和文件名
 exe_directory = r"E:\一维计算结果\小浪底与下游联合\XLDDS06\1D_RiverNet_OCTC"  # 替换为你exe文件所在的目录
 executable = "1D_RiverNet_OCTC.exe"
-arguments = ["case1", "case2"]     #这个或这些文件夹放在exe_directory下，里面放入Input和Output文件夹
+# 在exe_directory下创建planNum个文件夹，文件夹名称为case1, case2, ..., caseNum
+for i in range(planNum):
+    os.makedirs(os.path.join(exe_directory, f"case{i+1}"))
+# 在每个case文件夹下复制exe_directory下的Input和Output文件夹
+for i in range(planNum):
+    shutil.copytree(os.path.join(exe_directory, "Input"), os.path.join(exe_directory, f"case{i+1}", "Input"))
+    shutil.copytree(os.path.join(exe_directory, "Output"), os.path.join(exe_directory, f"case{i+1}", "Output"))
+
+arguments = [f"case{i+1}" for i in range(planNum)]     
 
 def run_simulation(argument):
     try:
