@@ -425,7 +425,7 @@ if save_initial_plan == 'y':
         json.dump(SMX_Plan, f, indent=2)      
 
 # 定义可执行文件所在的目录和文件名
-exe_directory = r"E:\一维计算结果\SMX_XLD_LYR\2R20_4\1D_RiverNet_OCTC"  # 替换为你exe文件所在的目录
+exe_directory = r"D:\一维计算结果\2R20_4\1D_RiverNet_OCTC"  # 替换为你exe文件所在的目录
 executable = "1D_RiverNet_OCTC.exe"
 # 在exe_directory下创建planNum个文件夹，文件夹名称为case1, case2, ..., caseNum
 for i in range(planNum):
@@ -460,9 +460,11 @@ arguments = [f"case{i+1}" for i in range(planNum)]
 
 def run_simulation(argument):
     try:
+        # CREATE_NEW_CONSOLE = 0x00000010
         result = subprocess.run([os.path.join(exe_directory, executable), argument], 
-                                cwd=exe_directory,  # 设置工作目录
-                                check=True)
+                              cwd=exe_directory,  # 设置工作目录
+                              creationflags=subprocess.CREATE_NEW_CONSOLE,  # 创建新的控制台窗口
+                              check=True)
         return f"Process for {argument} completed successfully."
     except subprocess.CalledProcessError as e:
         return f"An error occurred for {argument}: {e}"
