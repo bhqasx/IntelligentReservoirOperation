@@ -148,7 +148,23 @@ if __name__ == '__main__':
                 Q_in_interp = [interpolate(t, t_in, Q_in) for t in t_out]
                 print("已完成线性插值计算")
                 print(f"插值结果 Q_in_interp: {Q_in_interp}")
-                
+
+                # 在t_out,Q_in_interp序列上求出每个时刻的累计入库水量
+                # 声明一个和t_out长度相同的列表，用于存储累计入库水量
+                Acc_in = [0] * len(t_out)
+                for i in range(1, len(t_out)):
+                    Acc_in[i] = Acc_in[i-1] + (Q_in_interp[i] + Q_in_interp[i-1]) * (t_out[i] - t_out[i-1]) * 3600 / 2 / 1e8
+                print(f"累计入库水量(亿m3): {Acc_in}")
+
+                # 在t_out, Q_out序列上求出每个时刻的累计出库水量
+                # 声明一个和t_out长度相同的列表，用于存储累计出库水量
+                Acc_out = [0] * len(t_out)
+                for i in range(1, len(t_out)):
+                    Acc_out[i] = Acc_out[i-1] + (Q_out[i] + Q_out[i-1]) * (t_out[i] - t_out[i-1]) * 3600 / 2 / 1e8
+                print(f"累计出库水量(亿m3): {Acc_out}")
+
+                NetVolOut = [out - inn for out, inn in zip(Acc_out, Acc_in)]
+                print(f"净出库水量(亿m3): {NetVolOut}")
                 root.destroy()  # 全部选择完后关闭窗口
     
     # 添加确认按钮
