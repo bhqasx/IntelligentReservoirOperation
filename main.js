@@ -248,6 +248,10 @@ function CalculateRefillT(volChange, tt, qq, ttNat, qqNat, tCtrl, qCtrl) {
 }
 
 window.onload = function() {
+//弹出一个提示框
+alert('这是第2版');
+
+
 // Fetch the JSON data for Xiaolangdi
 fetch('Xiaolangdi.json')
   .then(response => response.json())
@@ -285,22 +289,34 @@ fetch('Xiaolangdi.json')
           x: {
             type: 'linear',
             position: 'bottom',
+            title: {
+              display: true,
+              text: 't(h)'
+            },
             grid: {
-              drawOnChartArea: false,  // Don't draw grid lines on the chart area
+              drawOnChartArea: false,
             },            
           },
           yAxis1: {
             type: 'linear',
             position: 'left',
+            title: {
+              display: true,
+              text: '流量(m³/s)'
+            },
             grid: {
-              drawOnChartArea: false,  // Don't draw grid lines on the chart area
+              drawOnChartArea: false,
             },            
           },
           yAxis2: {
             type: 'linear',
             position: 'right',
+            title: {
+              display: true,
+              text: '水位(m)'
+            },
             grid: {
-              drawOnChartArea: false,  // Don't draw grid lines on the chart area
+              drawOnChartArea: false,
             },            
           }
         }
@@ -345,22 +361,34 @@ fetch('Xiaolangdi.json')
             x: {
               type: 'linear',
               position: 'bottom',
+              title: {
+                display: true,
+                text: 't(h)'
+              },
               grid: {
-                drawOnChartArea: false,  // Don't draw grid lines on the chart area
+                drawOnChartArea: false,
               },
             },
             yAxisSMX1: {
               type: 'linear',
               position: 'left',
+              title: {
+                display: true,
+                text: '流量(m³/s)'
+              },
               grid: {
-                drawOnChartArea: false,  // Don't draw grid lines on the chart area
+                drawOnChartArea: false,
               },
             },
             yAxisSMX2: {
               type: 'linear',
               position: 'right',
+              title: {
+                display: true,
+                text: '水位(m)'
+              },
               grid: {
-                drawOnChartArea: false,  // Don't draw grid lines on the chart area
+                drawOnChartArea: false,
               },
             }
           }
@@ -661,53 +689,35 @@ fetch('Xiaolangdi.json')
 
 //绘制调控过程线
 document.getElementById('plot').addEventListener('click', function () {
-  //在chart1中绘制以XLD_t为横坐标，XLD_q为做坐标的连线
-  let xAxis2 = {
-    type: 'linear',
-    position: 'bottom',
-    grid: {
-      drawOnChartArea: false,  // Don't draw grid lines on the chart area
-    },        
-    labels: XLD_t,
-  };
-
-  // Add the new x axis to the chart
-  if (!chart1.options.scales) {
-    chart1.options.scales = {};
-  }
-  chart1.options.scales['xAxis2'] = xAxis2;
-
+  // 创建XLD调控过程线数据，过滤掉NaN值
   let XLD_RegCurve = {
     label: 'Regulated Discharge',
-    //XLD_t作为横坐标，XLD_q作为纵坐标
-    data: XLD_t.map((t, i) => ({ x: t, y: XLD_q[i] })),
+    data: XLD_t.map((t, i) => {
+      if (!isNaN(XLD_q[i])) {
+        return { x: t, y: XLD_q[i] };
+      }
+      return null;
+    }).filter(point => point !== null),
     yAxisID: 'yAxis1',
-    xAxisID: 'xAxis2',
+    borderColor: '#006400', // 深绿色
+    backgroundColor: '#006400'
   };
-  //chart1.data.labels = XLD_t;
+
   chart1.data.datasets.push(XLD_RegCurve);
   chart1.update();
 
-  //chart2中绘制三门峡的调度过程线
-  let xAxis2_SMX = {
-    type: 'linear',
-    position: 'bottom',
-    grid: {
-      drawOnChartArea: false,  // Don't draw grid lines on the chart area
-    },        
-    labels: SMX_t,
-  };
-
-  if (!chart2.options.scales) {
-    chart2.options.scales = {};
-  }
-  chart2.options.scales['xAxis2_SMX'] = xAxis2_SMX;
-
+  // 创建SMX调控过程线数据，过滤掉NaN值
   let SMX_RegCurve = {
     label: 'Regulated Discharge',
-    data: SMX_t.slice(2, 6).map((t, i) => ({ x: t, y: SMX_q[i + 2] })),
+    data: SMX_t.slice(2, 6).map((t, i) => {
+      if (!isNaN(SMX_q[i + 2])) {
+        return { x: t, y: SMX_q[i + 2] };
+      }
+      return null;
+    }).filter(point => point !== null),
     yAxisID: 'yAxisSMX1',
-    xAxisID: 'xAxis2_SMX',
+    borderColor: '#006400', // 深绿色
+    backgroundColor: '#006400'
   };
 
   chart2.data.datasets.push(SMX_RegCurve);
