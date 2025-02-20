@@ -474,3 +474,25 @@ with ThreadPoolExecutor() as executor:
     futures = [executor.submit(run_simulation, arg) for arg in arguments]
     for future in as_completed(futures):
         print(future.result())
+
+def evaluate_case(case_number):
+    """评估单个case的结果，返回评估分数"""
+    case_dir = os.path.join(exe_directory, f"case{case_number}")
+    output_dir = os.path.join(case_dir, "Output")
+    
+    try:
+        # 检查Output目录下的结果文件
+        # 这里需要你指定具体要分析的输出文件名称
+        result_file = os.path.join(output_dir, "1D_RiverNet_Results.txt")  # 或其他实际的输出文件
+        
+        if not os.path.exists(result_file):
+            print(f"Result file not found for case{case_number}")
+            return 0
+            
+        # 这里添加你的评估逻辑
+        # 例如：读取输出文件，检查计算结果是否满足要求
+        
+        return 1  # 成功
+    except Exception as e:
+        print(f"Error evaluating case{case_number}: {e}")
+        return 0  # 失败
