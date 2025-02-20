@@ -455,6 +455,26 @@ for i in range(planNum):
     with open(file_path, 'w') as f:
         json.dump(data, f, indent=2)
 
+def evaluate_case(case_number):
+    """评估单个case的结果，返回评估分数"""
+    case_dir = os.path.join(exe_directory, f"case{case_number}")
+    result_file = os.path.join(case_dir, "Output", "FlowCS  1.txt")
+    
+    try:
+        if not os.path.exists(result_file):
+            print(f"Result file not found for case{case_number}")
+            return 0
+        
+        # 读取文件的最后一行
+        with open(result_file, 'r') as f:
+            last_line = f.readlines()[-1].strip()
+        
+        print(f"Case {case_number} last line: {last_line}")
+        return 1  # 成功
+        
+    except Exception as e:
+        print(f"Error evaluating case{case_number}: {e}")
+        return 0  # 失败
 
 arguments = [f"case{i+1}" for i in range(planNum)]     
 
@@ -469,30 +489,15 @@ def run_simulation(argument):
     except subprocess.CalledProcessError as e:
         return f"An error occurred for {argument}: {e}"
 
-# 使用线程池并行运行多个子进程
+# 修改运行模拟的部分
+case_status = [0] * planNum  # 初始化状态数组
+
 with ThreadPoolExecutor() as executor:
     futures = [executor.submit(run_simulation, arg) for arg in arguments]
-    for future in as_completed(futures):
+    for i, future in enumerate(as_completed(futures)):
         print(future.result())
+        # 在每个模拟完成后评估结果
+        case_number = i + 1
+        case_status[i] = evaluate_case(case_number)
 
-def evaluate_case(case_number):
-    """评估单个case的结果，返回评估分数"""
-    case_dir = os.path.join(exe_directory, f"case{case_number}")
-    output_dir = os.path.join(case_dir, "Output")
-    
-    try:
-        # 检查Output目录下的结果文件
-        # 这里需要你指定具体要分析的输出文件名称
-        result_file = os.path.join(output_dir, "1D_RiverNet_Results.txt")  # 或其他实际的输出文件
-        
-        if not os.path.exists(result_file):
-            print(f"Result file not found for case{case_number}")
-            return 0
-            
-        # 这里添加你的评估逻辑
-        # 例如：读取输出文件，检查计算结果是否满足要求
-        
-        return 1  # 成功
-    except Exception as e:
-        print(f"Error evaluating case{case_number}: {e}")
-        return 0  # 失败
+print("Case evaluation results:", case_status)
