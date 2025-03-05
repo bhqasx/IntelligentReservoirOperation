@@ -3,7 +3,11 @@ import subprocess
 import json
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import tkinter as tk
+import numpy as np
 from tkinter import filedialog
+
+global case
+case = [None]  # 0号位置放个None
 
 def select_directory():
     """弹出目录选择对话框让用户选择目录"""
@@ -48,31 +52,38 @@ def run_simulation(argument, exe_directory, test=False):
         return f"An error occurred for {argument}: {e}"
 
 def evaluate_case(case_number, exe_directory):
+    global case
     """评估单个case的结果，返回评估分数"""
     case_dir = os.path.join(exe_directory, f"case{case_number}")
     out_dir = os.path.join(case_dir, "Output")
     #检查out_dir下有几个格式为"Reach  x"的文件夹
     reach_dirs = [d for d in os.listdir(out_dir) if d.startswith("Reach")]
     reach_num = len(reach_dirs)
-    result_file = os.path.join(case_dir, "Output", "FlowCS  1.txt")
     
-    try:
+    #循环reach_dirs
+    for i, reach_dir in enumerate(reach_dirs):
+        iReach = i + 1  # 如果想从1开始编号
+        # 或者 iReach = i  # 如果想从0开始编号
+        result_file = os.path.join(out_dir, reach_dir, "FlowCS  1.txt")
         if not os.path.exists(result_file):
             print(f"Result file not found for case{case_number}")
             return 0
-        
-        # 读取文件的最后一行
+        #读取文件的最后一行
         with open(result_file, 'r') as f:
-            last_line = f.readlines()[-1].strip()
-        
-        print(f"Case {case_number} last line: {last_line}")
-        return 1  # 成功
-        
-    except Exception as e:
-        print(f"Error evaluating case{case_number}: {e}")
-        return 0  # 失败
+            #f中除了前两行外，剩下部分是一个table，读取table中的第4列，存入case[case_number][iReach]["Qin"]
+            lines = f.readlines()[2:]
+            for line in lines:
+                if line.strip():
+                    columns = line.split()
+                    if len(columns) >= 4:
+                        case[case_number][iReach]["Qin"] = float(columns[3])
+
+
 
 def run_all_simulations(planNum, exe_directory=None, test=False):
+    global case
+    # 创建planNum+1个字典的列表（0号位置不用）
+    case = [None] + [dict() for _ in range(planNum)]    
     """运行所有模拟"""
     # 如果没有提供exe_directory，弹出目录选择对话框
     if exe_directory is None:
