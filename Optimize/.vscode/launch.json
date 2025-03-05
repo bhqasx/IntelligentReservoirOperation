@@ -10,6 +10,15 @@
             "request": "launch",
             "program": "${file}",
             "console": "externalTerminal"
+        },
+        {
+            "name": "Python: run_simulation with test",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/run_simulation.py",
+            "args": ["--planNum", "4", "--test"],
+            "console": "integratedTerminal",
+            "justMyCode": true
         }
     ]
 }

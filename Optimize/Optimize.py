@@ -5,6 +5,7 @@ import random
 import copy
 import shutil
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from run_simulation import run_all_simulations
 
 global SMX_t_in, SMX_q_in, SMX_HyperPara, SMX_CapCurve, iniVol_SMX
 
@@ -455,53 +456,5 @@ for i in range(planNum):
     with open(file_path, 'w') as f:
         json.dump(data, f, indent=2)
 
-def evaluate_case(case_number):
-    """评估单个case的结果，返回评估分数"""
-    case_dir = os.path.join(exe_directory, f"case{case_number}")
-    out_dir = os.path.join(case_dir, "Output")
-    #检查out_dir下有几个格式为“Reach  x"的文件夹
-    reach_dirs = [d for d in os.listdir(out_dir) if d.startswith("Reach")]
-    reach_num = len(reach_dirs)
-    result_file = os.path.join(case_dir, "Output", "FlowCS  1.txt")
-    
-    try:
-        if not os.path.exists(result_file):
-            print(f"Result file not found for case{case_number}")
-            return 0
-        
-        # 读取文件的最后一行
-        with open(result_file, 'r') as f:
-            last_line = f.readlines()[-1].strip()
-        
-        print(f"Case {case_number} last line: {last_line}")
-        return 1  # 成功
-        
-    except Exception as e:
-        print(f"Error evaluating case{case_number}: {e}")
-        return 0  # 失败
-
-arguments = [f"case{i+1}" for i in range(planNum)]     
-
-def run_simulation(argument):
-    try:
-        # CREATE_NEW_CONSOLE = 0x00000010
-        result = subprocess.run([os.path.join(exe_directory, executable), argument], 
-                              cwd=exe_directory,  # 设置工作目录
-                              creationflags=subprocess.CREATE_NEW_CONSOLE,  # 创建新的控制台窗口
-                              check=True)
-        return f"Process for {argument} completed successfully."
-    except subprocess.CalledProcessError as e:
-        return f"An error occurred for {argument}: {e}"
-
-# 修改运行模拟的部分
-case_status = [0] * planNum  # 初始化状态数组
-
-with ThreadPoolExecutor() as executor:
-    futures = [executor.submit(run_simulation, arg) for arg in arguments]
-    for i, future in enumerate(as_completed(futures)):
-        print(future.result())
-        # 在每个模拟完成后评估结果
-        case_number = i + 1
-        case_status[i] = evaluate_case(case_number)
-
-print("Case evaluation results:", case_status)
+# 运行所有模拟
+run_all_simulations(planNum, exe_directory, test=False)
