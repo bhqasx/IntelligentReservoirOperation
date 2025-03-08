@@ -64,6 +64,11 @@ def evaluate_case(case_number, exe_directory):
     for i, reach_dir in enumerate(reach_dirs):
         iReach = i + 1  # 如果想从1开始编号
         # 或者 iReach = i  # 如果想从0开始编号
+        
+        # 确保iReach键存在
+        if iReach not in case[case_number]:
+            case[case_number][iReach] = {}
+            
         result_file = os.path.join(out_dir, reach_dir, "FlowCS  1.txt")
         if not os.path.exists(result_file):
             print(f"Result file not found for case{case_number}")
