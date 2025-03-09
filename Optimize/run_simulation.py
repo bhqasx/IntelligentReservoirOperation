@@ -68,25 +68,43 @@ def evaluate_case(case_number, exe_directory):
         # 确保iReach键存在
         if iReach not in case[case_number]:
             case[case_number][iReach] = {}
-            
+        
+        # 检查reach_dir下有几个格式为”FlowCS  x.txt"的文件
+        flowcs_files = [f for f in os.listdir(os.path.join(out_dir, reach_dir)) if f.startswith("FlowCS")]
+        flowcs_num = len(flowcs_files)
+
+        # 读取FlowCS  1.txt中的数据
         result_file = os.path.join(out_dir, reach_dir, "FlowCS  1.txt")
         if not os.path.exists(result_file):
             print(f"Result file not found for case{case_number}")
             return 0
-        #读取文件的最后一行
+        
         with open(result_file, 'r') as f:
             # f中除了前两行外，剩下部分是一个table，读取table中的第4列，存入case[case_number][iReach]["Qin"]
             lines = f.readlines()[2:]
-            # 创建一个列表来存储所有行的第四列
+            # 创建列表来存储时间、流量和含沙量
+            time_values = []
             qin_values = []
+            sus_values = []
             for line in lines:
                 if line.strip():
                     columns = line.split()
-                    if len(columns) >= 4:
+                    if len(columns) >= 11:
+                        time_values.append(float(columns[1]))
                         qin_values.append(float(columns[3]))
-            
+                        sus_values.append(float(columns[10]))
+
             # 将列表转换为NumPy数组
+            case[case_number][iReach]["Time"] = np.array(time_values)
             case[case_number][iReach]["Qin"] = np.array(qin_values)
+            case[case_number][iReach]["SusIn"] = np.array(sus_values)
+   
+        # 读取最后一个FlowCS文件中的数据
+        result_file = os.path.join(out_dir, reach_dir, "FlowCS  {}.txt".format(flowcs_num))
+        if not os.path.exists(result_file):
+            print(f"Result file not found for case{case_number}")
+            return 0
+        
 
 
 
