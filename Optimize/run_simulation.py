@@ -75,13 +75,18 @@ def evaluate_case(case_number, exe_directory):
             return 0
         #读取文件的最后一行
         with open(result_file, 'r') as f:
-            #f中除了前两行外，剩下部分是一个table，读取table中的第4列，存入case[case_number][iReach]["Qin"]
+            # f中除了前两行外，剩下部分是一个table，读取table中的第4列，存入case[case_number][iReach]["Qin"]
             lines = f.readlines()[2:]
+            # 创建一个列表来存储所有行的第四列
+            qin_values = []
             for line in lines:
                 if line.strip():
                     columns = line.split()
                     if len(columns) >= 4:
-                        case[case_number][iReach]["Qin"] = float(columns[3])
+                        qin_values.append(float(columns[3]))
+            
+            # 将列表转换为NumPy数组
+            case[case_number][iReach]["Qin"] = np.array(qin_values)
 
 
 
