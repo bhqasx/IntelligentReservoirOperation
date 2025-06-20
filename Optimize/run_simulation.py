@@ -104,7 +104,49 @@ def evaluate_case(case_number, exe_directory):
         if not os.path.exists(result_file):
             print(f"Result file not found for case{case_number}")
             return 0
+
+        with open(result_file, 'r') as f:
+            # f中除了前两行外，剩下部分是一个table，读取table中的第4列，存入case[case_number][iReach]["Qout"]
+            lines = f.readlines()[2:]
+            # 创建列表来存储流量和含沙量
+            qin_values = []
+            sus_values = []
+            for line in lines:
+                if line.strip():
+                    columns = line.split()
+                    if len(columns) >= 11:
+                        qin_values.append(float(columns[3]))
+                        sus_values.append(float(columns[10]))
+
+            # 将列表转换为NumPy数组
+            case[case_number][iReach]["Qout"] = np.array(qin_values)
+            case[case_number][iReach]["SusOut"] = np.array(sus_values)
         
+        # 计算入库沙量
+        qs_in = case[case_number][iReach]["Qin"] * case[case_number][iReach]["SusIn"]
+        qs_in_integral = np.trapz(qs_in, case[case_number][iReach]["Time"])
+        # 计算出库沙量
+        qs_out = case[case_number][iReach]["Qout"] * case[case_number][iReach]["SusOut"]
+        qs_out_integral = np.trapz(qs_out, case[case_number][iReach]["Time"])
+
+        # 计算入库沙量和出库沙量的差值
+        qs_diff = qs_out_integral - qs_in_integral
+        case[case_number][iReach]["QsDiff"] = qs_diff*3600/1000  # 将单位转换为t
+    # 结束河段循环
+
+    # 读取out_dir下的ObjectiveFuntionsValue.TXT
+    with open(os.path.join(out_dir, "ObjectiveFuntionsValue.TXT"), 'r') as f:
+        lines = f.readlines()
+        # 读取第2行，存入temp_id中
+        temp_id = lines[1].strip()
+        # 河段循环，如果iReach等于temp_id，则读取第4行，存入case[case_number][iReach]["Obj_flood"],否则存入0
+        for iReach in range(1, reach_num + 1):
+            if iReach == int(temp_id):
+                case[case_number][iReach]["Obj_flood"] = float(lines[3].strip())
+            else:
+                case[case_number][iReach]["Obj_flood"] = 0
+
+    return case[case_number][3]["Obj_flood"]
 
 
 
