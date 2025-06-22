@@ -435,7 +435,7 @@ for i in range(planNum):
         os.makedirs(case_dir)
         # 在新创建的case文件夹下复制exe_directory下的Input和Output文件夹
         shutil.copytree(os.path.join(exe_directory, "Input"), os.path.join(case_dir, "Input"))
-        shutil.copytree(os.path.join(exe_directory, "Output"), os.path.join(case_dir, "Output"))
+        os.makedirs(os.path.join(case_dir, "Output"))
 
 # 将SMX_Plan和XLD_Plan中i号方案的t和q数组写入case{i+1}/Input/ReservoirOutQ.json中对应的Rhid对象的t和q中
 for i in range(planNum):

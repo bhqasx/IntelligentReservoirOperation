@@ -134,7 +134,7 @@ def evaluate_case(case_number, exe_directory):
         case[case_number][iReach]["QsDiff"] = qs_diff*3600/1000  # 将单位转换为t
     # 结束河段循环
 
-    # 读取out_dir下的ObjectiveFuntionsValue.TXT
+    # 读取out_dir下的ObjectiveFunctionsValue.TXT
     with open(os.path.join(out_dir, "ObjectiveFunctionsValue.TXT"), 'r') as f:
         lines = f.readlines()
         # 读取第2行，存入temp_id中
