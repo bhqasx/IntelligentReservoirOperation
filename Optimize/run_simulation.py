@@ -135,7 +135,7 @@ def evaluate_case(case_number, exe_directory):
     # 结束河段循环
 
     # 读取out_dir下的ObjectiveFuntionsValue.TXT
-    with open(os.path.join(out_dir, "ObjectiveFuntionsValue.TXT"), 'r') as f:
+    with open(os.path.join(out_dir, "ObjectiveFunctionsValue.TXT"), 'r') as f:
         lines = f.readlines()
         # 读取第2行，存入temp_id中
         temp_id = lines[1].strip()

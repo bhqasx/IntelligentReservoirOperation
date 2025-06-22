@@ -426,7 +426,7 @@ if save_initial_plan == 'y':
         json.dump(SMX_Plan, f, indent=2)      
 
 # 定义可执行文件所在的目录和文件名
-exe_directory = r"E:\一维计算结果\SMX_XLD_LYR\2R20_6\1D_RiverNet_OCTC"  # 替换为你exe文件所在的目录
+exe_directory = r"E:\一维计算结果\SMX_XLD_LYR\2R20_9\1D_RiverNet_OCTC"  # 替换为你exe文件所在的目录
 executable = "1D_RiverNet_OCTC.exe"
 # 在exe_directory下创建planNum个文件夹，文件夹名称为case1, case2, ..., caseNum
 for i in range(planNum):
