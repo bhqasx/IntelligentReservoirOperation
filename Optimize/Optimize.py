@@ -4,6 +4,7 @@ import json
 import random
 import copy
 import shutil
+import numpy as np
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from run_simulation import run_all_simulations
 
@@ -456,5 +457,56 @@ for i in range(planNum):
     with open(file_path, 'w') as f:
         json.dump(data, f, indent=2)
 
-# 运行所有模拟
-run_all_simulations(planNum, exe_directory, test=False)
+def convert_numpy_to_list(obj):
+    """递归地将numpy数组转换为Python列表"""
+    if isinstance(obj, np.ndarray):
+        return obj.tolist()
+    elif isinstance(obj, dict):
+        return {key: convert_numpy_to_list(value) for key, value in obj.items()}
+    elif isinstance(obj, list):
+        return [convert_numpy_to_list(item) for item in obj]
+    else:
+        return obj
+
+# 运行所有模拟并获取case数据
+case = run_all_simulations(planNum, exe_directory, test=False)
+case_serializable = convert_numpy_to_list(case)
+# 将case中的数据保存为名为PopHistory.json的文件,其中每个对象包含i_gen和case两个键，case的值为case中的数据, i_gen从1开始
+with open('PopHistory.json', 'w') as f:
+    json.dump({'i_gen': 1, 'case': case_serializable}, f, indent=2)
+
+
+#-------------------------------------------------------------------------------------------------------
+# 使用NSGA-III优化
+#-------------------------------------------------------------------------------------------------------
+
+# 用obj变量存储目标函数值
+obj = np.zeros((planNum, 3))
+for i in range(planNum):
+    obj[i, 0] = -case[i+1][1]["QsDiff"]  #冲淤目标转换成求最小值
+    obj[i, 1] = -case[i+1][2]["QsDiff"]
+    obj[i, 2] = case[i+1][3]["Obj_flood"]
+
+# 导入NSGA-III工具函数
+from nsga3_utils import normalize_objectives, generate_reference_directions, associate_to_reference_directions
+
+# 计算理想点（每个目标函数的最小值）
+ideal_point = np.min(obj, axis=0)
+
+# 可选：计算nadir点（每个目标函数的最大值，用于了解目标函数的范围）
+nadir_point = np.max(obj, axis=0)
+
+# 使用NSGA-III标准化
+obj_normalized, extreme_points, intercepts = normalize_objectives(obj, ideal_point, nadir_point, verbose=True)
+
+# 生成参考方向（3目标，分割数为4）
+reference_directions = generate_reference_directions(n_obj=3, n_divisions=4)
+print(f"生成了 {len(reference_directions)} 个参考方向")
+
+# 将解关联到参考方向
+distances, associations = associate_to_reference_directions(obj_normalized, reference_directions)
+print("解到参考方向的距离:", distances)
+print("解关联的参考方向索引:", associations)
+
+
+

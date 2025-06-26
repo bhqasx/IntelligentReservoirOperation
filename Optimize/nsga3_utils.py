@@ -1,0 +1,158 @@
+import numpy as np
+
+def calculate_asf(F, weight, ideal_point):
+    """计算Achievement Scalarizing Function (ASF)"""
+    return np.max((F - ideal_point) / weight)
+
+def find_extreme_points(obj, ideal_point):
+    """找到极值点用于构造超平面"""
+    n_obj = obj.shape[1]
+    extreme_points = np.zeros((n_obj, n_obj))
+    
+    for i in range(n_obj):
+        # 创建权重向量，第i个目标权重很小，其他很大
+        weight = np.full(n_obj, 1e-6)
+        weight[i] = 1.0
+        
+        # 找到ASF最小的解
+        asf_values = np.array([calculate_asf(obj[j], weight, ideal_point) for j in range(len(obj))])
+        min_idx = np.argmin(asf_values)
+        extreme_points[i] = obj[min_idx]
+    
+    return extreme_points
+
+def calculate_intercepts(extreme_points, ideal_point, nadir_point):
+    """计算超平面截距"""
+    try:
+        # 构造线性方程组 A * intercepts = 1
+        # 其中A是(extreme_points - ideal_point)
+        A = extreme_points - ideal_point
+        b = np.ones(len(extreme_points))
+        
+        # 求解线性方程组，得到截距的倒数
+        intercept_reciprocals = np.linalg.solve(A, b)
+        
+        # 计算真正的截距
+        intercepts = 1.0 / intercept_reciprocals
+        
+        # 如果截距为负或接近0，使用nadir点
+        for i in range(len(intercepts)):
+            if intercepts[i] <= 1e-6:
+                intercepts[i] = nadir_point[i] - ideal_point[i]
+                
+        return intercepts
+    except np.linalg.LinAlgError:
+        # 如果矩阵奇异，使用nadir点作为截距
+        return nadir_point - ideal_point
+
+def normalize_objectives(obj, ideal_point, nadir_point, verbose=True):
+    """
+    NSGA-III标准化过程
+    
+    Parameters:
+    obj: 目标函数值矩阵 (n_solutions x n_objectives)
+    ideal_point: 理想点
+    nadir_point: nadir点
+    verbose: 是否打印详细信息
+    
+    Returns:
+    obj_normalized: 标准化后的目标函数值
+    extreme_points: 极值点
+    intercepts: 截距
+    """
+    
+    # 计算极值点
+    extreme_points = find_extreme_points(obj, ideal_point)
+    if verbose:
+        print("极值点:")
+        print(extreme_points)
+    
+    # 计算截距
+    intercepts = calculate_intercepts(extreme_points, ideal_point, nadir_point)
+    if verbose:
+        print("超平面截距:", intercepts)
+    
+    # 进行标准化
+    obj_normalized = (obj - ideal_point) / intercepts
+    
+    if verbose:
+        print("标准化后的目标函数值:")
+        print(obj_normalized)
+        print("标准化后目标函数的范围:")
+        for i in range(obj.shape[1]):
+            print(f"目标{i+1}: [{np.min(obj_normalized[:, i]):.6f}, {np.max(obj_normalized[:, i]):.6f}]")
+    
+    return obj_normalized, extreme_points, intercepts
+
+def generate_reference_directions(n_obj, n_divisions):
+    """
+    生成参考方向（简化版本，适用于3目标）
+    
+    Parameters:
+    n_obj: 目标函数数量
+    n_divisions: 分割数
+    
+    Returns:
+    reference_directions: 参考方向矩阵
+    """
+    if n_obj == 3:
+        # 对于3目标问题，生成单纯形上的均匀分布点
+        ref_dirs = []
+        for i in range(n_divisions + 1):
+            for j in range(n_divisions + 1 - i):
+                k = n_divisions - i - j
+                ref_dir = np.array([i, j, k]) / n_divisions
+                ref_dirs.append(ref_dir)
+        return np.array(ref_dirs)
+    else:
+        # 简化版本：为其他目标数量生成随机参考方向
+        n_ref = (n_divisions + n_obj - 1) // n_obj * 10  # 估算参考方向数量
+        ref_dirs = np.random.random((n_ref, n_obj))
+        # 标准化到单位单纯形
+        ref_dirs = ref_dirs / np.sum(ref_dirs, axis=1, keepdims=True)
+        return ref_dirs
+
+def associate_to_reference_directions(obj_normalized, reference_directions):
+    """
+    将解关联到参考方向
+    
+    Parameters:
+    obj_normalized: 标准化后的目标函数值
+    reference_directions: 参考方向
+    
+    Returns:
+    distances: 每个解到其最近参考方向的距离
+    associations: 每个解关联的参考方向索引
+    """
+    n_solutions = obj_normalized.shape[0]
+    n_ref = reference_directions.shape[0]
+    
+    distances = np.zeros(n_solutions)
+    associations = np.zeros(n_solutions, dtype=int)
+    
+    for i in range(n_solutions):
+        min_distance = float('inf')
+        best_ref = 0
+        
+        for j in range(n_ref):
+            # 计算点到参考方向的垂直距离
+            ref_dir = reference_directions[j]
+            point = obj_normalized[i]
+            
+            # 投影长度
+            projection_length = np.dot(point, ref_dir) / np.linalg.norm(ref_dir)
+            
+            # 投影点
+            projection = projection_length * ref_dir / np.linalg.norm(ref_dir)
+            
+            # 垂直距离
+            distance = np.linalg.norm(point - projection)
+            
+            if distance < min_distance:
+                min_distance = distance
+                best_ref = j
+        
+        distances[i] = min_distance
+        associations[i] = best_ref
+    
+    return distances, associations 

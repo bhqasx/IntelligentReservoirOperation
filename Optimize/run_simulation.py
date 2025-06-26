@@ -195,6 +195,8 @@ def run_all_simulations(planNum, exe_directory=None, test=False):
         print("Case evaluation results:", case_status)
     else:
         print("窗口标题测试完成")
+    
+    return case  # 返回case变量
 
 if __name__ == "__main__":
     # 当作为独立程序运行时
