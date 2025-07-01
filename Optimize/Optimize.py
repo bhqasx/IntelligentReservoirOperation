@@ -7,6 +7,13 @@ import shutil
 import numpy as np
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from run_simulation import run_all_simulations
+# 导入NSGA-III工具函数
+from nsga3_utils import (
+    normalize_objectives, 
+    generate_reference_directions, 
+    associate_to_reference_directions,
+    generate_offspring
+)
 
 global SMX_t_in, SMX_q_in, SMX_HyperPara, SMX_CapCurve, iniVol_SMX
 
@@ -471,9 +478,11 @@ def convert_numpy_to_list(obj):
 # 运行所有模拟并获取case数据
 case = run_all_simulations(planNum, exe_directory, test=False)
 case_serializable = convert_numpy_to_list(case)
-# 将case中的数据保存为名为PopHistory.json的文件,其中每个对象包含i_gen和case两个键，case的值为case中的数据, i_gen从1开始
-with open('PopHistory.json', 'w') as f:
-    json.dump({'i_gen': 1, 'case': case_serializable}, f, indent=2)
+# 将case中的数据保存为名为PopHistory_Gen{代数}.json的文件
+generation = 1  # 当前代数
+filename = f'PopHistory_Gen{generation}.json'
+with open(filename, 'w') as f:
+    json.dump({'i_gen': generation, 'case': case_serializable}, f, indent=2)
 
 
 #-------------------------------------------------------------------------------------------------------
@@ -486,9 +495,21 @@ for i in range(planNum):
     obj[i, 0] = -case[i+1][1]["QsDiff"]  #冲淤目标转换成求最小值
     obj[i, 1] = -case[i+1][2]["QsDiff"]
     obj[i, 2] = case[i+1][3]["Obj_flood"]
+P_plans_SMX = SMX_Plan
+P_plans_XLD = XLD_Plan
 
 # 导入NSGA-III工具函数
 from nsga3_utils import normalize_objectives, generate_reference_directions, associate_to_reference_directions
+
+max_gen = 200
+while generation <= max_gen:
+    print(f"第{generation}代")
+
+    Q_plans_SMX, Q_plans_XLD = generate_offspring(P_plans_SMX, P_plans_XLD)
+    
+    # 在循环结束前增加generation计数
+    generation += 1 
+
 
 # 计算理想点（每个目标函数的最小值）
 ideal_point = np.min(obj, axis=0)

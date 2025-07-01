@@ -1,4 +1,7 @@
 import numpy as np
+import random
+import copy
+import os
 
 def calculate_asf(F, weight, ideal_point):
     """计算Achievement Scalarizing Function (ASF)"""
@@ -155,4 +158,48 @@ def associate_to_reference_directions(obj_normalized, reference_directions):
         distances[i] = min_distance
         associations[i] = best_ref
     
-    return distances, associations 
+    return distances, associations
+
+def generate_offspring(P_plans_SMX, P_plans_XLD):
+    """
+    生成子代种群
+    
+    Parameters:
+    P_plans_SMX: 父代SMX方案
+    P_plans_XLD: 父代XLD方案  
+    obj: 目标函数值矩阵
+    
+    Returns:
+    Q_plans_SMX: 子代SMX方案
+    Q_plans_XLD: 子代XLD方案
+    """
+
+    pop_size = len(P_plans_SMX)
+    
+    # 为每个子代个体选择父代并进行交叉
+    for i in range(pop_size):
+        # 随机选择4个不同的个体索引（类似breeding函数）
+        available_indices = list(range(pop_size))
+        
+        if len(available_indices) >= 4:
+            i1, i2, i3, i4 = random.sample(available_indices, 4)
+        else:
+            # 如果种群太小，允许重复选择
+            i1, i2, i3, i4 = random.choices(available_indices, k=4)
+        
+        # 选择parent_1（参照breeding函数的选择机制）
+        rand = int.from_bytes(os.urandom(8), byteorder='big') / ((1 << 64) - 1)
+        if rand > 0.5:
+            parent_1 = i1
+        else:
+            parent_1 = i2
+            
+        # 选择parent_2
+        rand = int.from_bytes(os.urandom(8), byteorder='big') / ((1 << 64) - 1)
+        if rand > 0.5:
+            parent_2 = i3
+        else:
+            parent_2 = i4
+
+
+    return Q_plans_SMX, Q_plans_XLD
