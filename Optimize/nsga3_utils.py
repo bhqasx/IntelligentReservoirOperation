@@ -160,6 +160,43 @@ def associate_to_reference_directions(obj_normalized, reference_directions):
     
     return distances, associations
 
+def crossover(parent_1, parent_2, mu):
+    """
+    对水库调度方案进行SBX交叉
+    
+    Parameters:
+    parent_1, parent_2: 父代方案字典，包含't'和'q'数组
+    mu: 分布指数
+    
+    Returns:
+    offspring: 子代方案字典
+    """
+    offspring = copy.deepcopy(parent_1)
+    
+    # 对时间序列进行交叉（除了固定的时间点）
+    for j in range(1, len(parent_1['t']) - 1):  # 避免交叉第一个和最后一个时间点
+        if parent_1['t'][j] is not None and parent_2['t'][j] is not None:
+            # 设置时间的合理边界
+            min_time = max(0, min(parent_1['t'][j], parent_2['t'][j]) * 0.8)
+            max_time = max(parent_1['t'][j], parent_2['t'][j]) * 1.2
+            
+            offspring['t'][j] = crossover_variable(
+                parent_1['t'][j], parent_2['t'][j], mu, min_time, max_time
+            )
+    
+    # 对流量序列进行交叉
+    for j in range(len(parent_1['q'])):
+        if parent_1['q'][j] is not None and parent_2['q'][j] is not None:
+            # 设置流量的合理边界
+            min_flow = 0
+            max_flow = max(parent_1['q'][j], parent_2['q'][j]) * 1.5
+            
+            offspring['q'][j] = crossover_variable(
+                parent_1['q'][j], parent_2['q'][j], mu, min_flow, max_flow
+            )
+    
+    return offspring
+
 def generate_offspring(P_plans_SMX, P_plans_XLD):
     """
     生成子代种群
@@ -173,8 +210,12 @@ def generate_offspring(P_plans_SMX, P_plans_XLD):
     Q_plans_SMX: 子代SMX方案
     Q_plans_XLD: 子代XLD方案
     """
-
+    mu = 1
     pop_size = len(P_plans_SMX)
+
+    # 复制父代作为子代的初始值
+    Q_plans_SMX = copy.deepcopy(P_plans_SMX)
+    Q_plans_XLD = copy.deepcopy(P_plans_XLD)
     
     # 为每个子代个体选择父代并进行交叉
     for i in range(pop_size):
@@ -200,6 +241,10 @@ def generate_offspring(P_plans_SMX, P_plans_XLD):
             parent_2 = i3
         else:
             parent_2 = i4
+
+        # 交叉操作
+        Q_plans_SMX[i] = crossover(P_plans_SMX[parent_1], P_plans_SMX[parent_2], mu)
+        Q_plans_XLD[i] = crossover(P_plans_XLD[parent_1], P_plans_XLD[parent_2], mu)
 
 
     return Q_plans_SMX, Q_plans_XLD

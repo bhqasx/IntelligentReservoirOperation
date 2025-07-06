@@ -111,16 +111,20 @@ def evaluate_case(case_number, exe_directory):
             # 创建列表来存储流量和含沙量
             qin_values = []
             sus_values = []
+            z_values = []
             for line in lines:
                 if line.strip():
                     columns = line.split()
                     if len(columns) >= 11:
                         qin_values.append(float(columns[3]))
                         sus_values.append(float(columns[10]))
+                        z_values.append(float(columns[2]))
 
             # 将列表转换为NumPy数组
             case[case_number][iReach]["Qout"] = np.array(qin_values)
             case[case_number][iReach]["SusOut"] = np.array(sus_values)
+            # 将z_values最后一个值存储
+            case[case_number][iReach]["Zend_lastCS"] = z_values[-1]
         
         # 计算入库沙量
         qs_in = case[case_number][iReach]["Qin"] * case[case_number][iReach]["SusIn"]

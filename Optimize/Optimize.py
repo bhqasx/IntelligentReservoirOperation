@@ -243,32 +243,6 @@ except FileNotFoundError as e:
 except json.JSONDecodeError as e:
     print(f"Error decoding JSON: {e}")
 
-# 读取Xiaolangdi.json和Sanmenxia.json
-try:
-    xld_file = find_file("Xiaolangdi.json")
-    smx_file = find_file("Sanmenxia.json")
-
-    with open(xld_file, 'r') as f:
-        tempData = json.load(f)
-        XLD_CapCurve = {
-            'WL': tempData.get('CapCurve', {}).get('WL', []),
-            'Vol': tempData.get('CapCurve', {}).get('Vol', [])
-        }
-        XLD_t_in = tempData.get('t', [])
-        XLD_q_in = tempData.get('Inflow', [])
-
-    with open(smx_file, 'r') as f:
-        tempData = json.load(f)
-        SMX_CapCurve = {
-            'WL': tempData.get('CapCurve', {}).get('WL', []),
-            'Vol': tempData.get('CapCurve', {}).get('Vol', [])
-        }
-        SMX_t_in = tempData.get('t', [])
-        SMX_q_in = tempData.get('Inflow', [])
-except FileNotFoundError as e:
-    print(f"Error: {e}")
-except json.JSONDecodeError as e:
-    print(f"Error decoding JSON: {e}")
 
 def generate_from_SMX(i, xld_plan, smx_plan):
     global SMX_t_in, SMX_q_in, SMX_HyperPara, SMX_CapCurve, iniVol_SMX
@@ -339,99 +313,171 @@ def generate_from_SMX(i, xld_plan, smx_plan):
 
     return xld_plan, smx_plan, True
 
+def convert_numpy_to_list(obj):
+    """递归地将numpy数组转换为Python列表"""
+    if isinstance(obj, np.ndarray):
+        return obj.tolist()
+    elif isinstance(obj, dict):
+        return {key: convert_numpy_to_list(value) for key, value in obj.items()}
+    elif isinstance(obj, list):
+        return [convert_numpy_to_list(item) for item in obj]
+    else:
+        return obj
 
-
-iniWL_XLD = 250.8
-#在终端提示输入小浪底初始水位，并显示当前默认输入值是iniWL_XLD，如果用户输入为空，则使用默认值
-iniWL_XLD = input(f"请输入小浪底初始水位: (默认值: {iniWL_XLD})")
-if iniWL_XLD == '':
+def generate_ini_plans():
+    """
+    生成初始方案
+    
+    Returns:
+    XLD_Plan: 小浪底方案列表
+    SMX_Plan: 三门峡方案列表
+    iniVol_XLD: 小浪底初始库容
+    iniVol_SMX: 三门峡初始库容
+    planNum: 方案数量
+    """
+    global iniVol_SMX, iniVol_XLD  # 声明为全局变量，供其他函数使用
+    
     iniWL_XLD = 250.8
-else:
-    iniWL_XLD = float(iniWL_XLD)
-xx = XLD_CapCurve['WL']
-yy = XLD_CapCurve['Vol']
-iniVol_XLD = interpolate(iniWL_XLD, xx, yy)
+    #在终端提示输入小浪底初始水位，并显示当前默认输入值是iniWL_XLD，如果用户输入为空，则使用默认值
+    iniWL_XLD = input(f"请输入小浪底初始水位: (默认值: {iniWL_XLD})")
+    if iniWL_XLD == '':
+        iniWL_XLD = 250.8
+    else:
+        iniWL_XLD = float(iniWL_XLD)
+    xx = XLD_CapCurve['WL']
+    yy = XLD_CapCurve['Vol']
+    iniVol_XLD = interpolate(iniWL_XLD, xx, yy)
 
-iniWL_SMX = 318
-#在终端提示输入三门峡初始水位，并显示当前默认输入值是iniWL_SMX，如果用户输入为空，则使用默认值
-iniWL_SMX = input(f"请输入三门峡初始水位: (默认值: {iniWL_SMX})")
-if iniWL_SMX == '':
     iniWL_SMX = 318
-else:
-    iniWL_SMX = float(iniWL_SMX)
-xx = SMX_CapCurve['WL']
-yy = SMX_CapCurve['Vol']
-iniVol_SMX = interpolate(iniWL_SMX, xx, yy)
+    #在终端提示输入三门峡初始水位，并显示当前默认输入值是iniWL_SMX，如果用户输入为空，则使用默认值
+    iniWL_SMX = input(f"请输入三门峡初始水位: (默认值: {iniWL_SMX})")
+    if iniWL_SMX == '':
+        iniWL_SMX = 318
+    else:
+        iniWL_SMX = float(iniWL_SMX)
+    xx = SMX_CapCurve['WL']
+    yy = SMX_CapCurve['Vol']
+    iniVol_SMX = interpolate(iniWL_SMX, xx, yy)
 
-# 设置方案数量
-planNum = 4
-# 用一个数据结构存储XLD的planNum个方案，其中每个方案都有t和q两个数组，且数组长度与XLD_KeyP中的t数组长度相同
-XLD_Plan = []
-for i in range(planNum):
-    XLD_Plan.append({
-        't': copy.deepcopy(XLD_KeyP['t']),
-        'q': copy.deepcopy(XLD_KeyP['q'])
-    })
+    # 设置方案数量
+    planNum = 4
+    # 用一个数据结构存储XLD的planNum个方案，其中每个方案都有t和q两个数组，且数组长度与XLD_KeyP中的t数组长度相同
+    XLD_Plan = []
+    for i in range(planNum):
+        XLD_Plan.append({
+            't': copy.deepcopy(XLD_KeyP['t']),
+            'q': copy.deepcopy(XLD_KeyP['q'])
+        })
 
-# 用一个数据结构存储SMX的planNum个方案，其中每个方案都有t和q两个数组，且数组长度与SMX_KeyP中的t数组长度相同
-SMX_Plan = []
-for i in range(planNum):
-    SMX_Plan.append({
-        't': copy.deepcopy(SMX_KeyP['t']),
-        'q': copy.deepcopy(SMX_KeyP['q'])
-    })
+    # 用一个数据结构存储SMX的planNum个方案，其中每个方案都有t和q两个数组，且数组长度与SMX_KeyP中的t数组长度相同
+    SMX_Plan = []
+    for i in range(planNum):
+        SMX_Plan.append({
+            't': copy.deepcopy(SMX_KeyP['t']),
+            'q': copy.deepcopy(SMX_KeyP['q'])
+        })
 
+    # 设置最迟开始时间
+    t2_lim = XLD_KeyP['t'][0]+200
 
-# 设置最迟开始时间
-t2_lim = XLD_KeyP['t'][0]+200
+    for i in range(planNum):
+        new_value = random.uniform(XLD_KeyP['t'][0], t2_lim)
+        print(f"Plan {i}: Random value = {new_value}, Lower bound = {XLD_KeyP['t'][0]}, Upper bound = {t2_lim}")
+        XLD_Plan[i]['t'][1] = new_value
+        XLD_Plan[i]['t'][2] = new_value + 60  
+        #计算达到小浪底汛限水位的时间
+        Vol_FldContr = interpolate(XLD_HyperPara['WlFldContr'], XLD_CapCurve['WL'], XLD_CapCurve['Vol'])
+        netOutflowVol = iniVol_XLD - Vol_FldContr
+        XLD_Plan[i]['t'][3], flag = CalculateT(netOutflowVol, XLD_t_in, XLD_q_in, 3, 1, 1, i)
+        #计算达到小浪底对接水位的时间
+        Vol_StartReg = interpolate(XLD_HyperPara['WlReg'], XLD_CapCurve['WL'], XLD_CapCurve['Vol'])
+        netOutflowVol = iniVol_XLD - Vol_StartReg
+        XLD_Plan[i]['t'][4], flag = CalculateT(netOutflowVol, XLD_t_in, XLD_q_in, 4, 1, 2, i)
+        #三门峡t2之后的生成过程
+        attempts = 0
+        max_attempts = 100  # 设置最大尝试次数，以防无限循环
+        while True:
+            XLD_Plan[i], SMX_Plan[i], flag = generate_from_SMX(i, XLD_Plan[i], SMX_Plan[i])
+            if flag:
+                break
+            attempts += 1
+            if attempts >= max_attempts:
+                print(f"Plan {i}: Failed to generate SMX plan after {max_attempts} attempts")
+                break
 
-for i in range(planNum):
-    new_value = random.uniform(XLD_KeyP['t'][0], t2_lim)
-    print(f"Plan {i}: Random value = {new_value}, Lower bound = {XLD_KeyP['t'][0]}, Upper bound = {t2_lim}")
-    XLD_Plan[i]['t'][1] = new_value
-    XLD_Plan[i]['t'][2] = new_value + 60  
-    #计算达到小浪底汛限水位的时间
-    Vol_FldContr = interpolate(XLD_HyperPara['WlFldContr'], XLD_CapCurve['WL'], XLD_CapCurve['Vol'])
-    netOutflowVol = iniVol_XLD - Vol_FldContr
-    XLD_Plan[i]['t'][3], flag = CalculateT(netOutflowVol, XLD_t_in, XLD_q_in, 3, 1, 1, i)
-    #计算达到小浪底对接水位的时间
-    Vol_StartReg = interpolate(XLD_HyperPara['WlReg'], XLD_CapCurve['WL'], XLD_CapCurve['Vol'])
-    netOutflowVol = iniVol_XLD - Vol_StartReg
-    XLD_Plan[i]['t'][4], flag = CalculateT(netOutflowVol, XLD_t_in, XLD_q_in, 4, 1, 2, i)
-    #三门峡t2之后的生成过程
-    attempts = 0
-    max_attempts = 100  # 设置最大尝试次数，以防无限循环
-    while True:
-        XLD_Plan[i], SMX_Plan[i], flag = generate_from_SMX(i, XLD_Plan[i], SMX_Plan[i])
-        if flag:
-            break
-        attempts += 1
-        if attempts >= max_attempts:
-            print(f"Plan {i}: Failed to generate SMX plan after {max_attempts} attempts")
-            break
+    # XLD_Plan和SMX_Plan中的t数组中，如果有两个相邻的t值相同，则将比较靠后的t值改为前一个t值加0.01
+    for i in range(planNum):
+        for j in range(len(XLD_Plan[i]['t'])-1):
+            if XLD_Plan[i]['t'][j] == XLD_Plan[i]['t'][j+1]:
+                XLD_Plan[i]['t'][j+1] = XLD_Plan[i]['t'][j] + 0.01
+        for j in range(len(SMX_Plan[i]['t'])-1):
+            if SMX_Plan[i]['t'][j] == SMX_Plan[i]['t'][j+1]:
+                SMX_Plan[i]['t'][j+1] = SMX_Plan[i]['t'][j] + 0.01
 
-# XLD_Plan和SMX_Plan中的t数组中，如果有两个相邻的t值相同，则将比较靠后的t值改为前一个t值加0.01
-for i in range(planNum):
-    for j in range(len(XLD_Plan[i]['t'])-1):
-        if XLD_Plan[i]['t'][j] == XLD_Plan[i]['t'][j+1]:
-            XLD_Plan[i]['t'][j+1] = XLD_Plan[i]['t'][j] + 0.01
-    for j in range(len(SMX_Plan[i]['t'])-1):
-        if SMX_Plan[i]['t'][j] == SMX_Plan[i]['t'][j+1]:
-            SMX_Plan[i]['t'][j+1] = SMX_Plan[i]['t'][j] + 0.01
+    #将SMX_Plan中的q数组中的null值改为0
+    for i in range(planNum):
+        for j in range(len(SMX_Plan[i]['q'])):
+            if SMX_Plan[i]['q'][j] is None:
+                SMX_Plan[i]['q'][j] = 0
 
-#将SMX_Plan中的q数组中的null值改为0
-for i in range(planNum):
-    for j in range(len(SMX_Plan[i]['q'])):
-        if SMX_Plan[i]['q'][j] is None:
-            SMX_Plan[i]['q'][j] = 0
+    save_initial_plan = input("是否保存初始方案？(y/n)")
+    if save_initial_plan == 'y':
+        # 将XLD_Plan和SMX_Plan保存为json文件
+        with open('XLD_Plan.json', 'w') as f:
+            json.dump(XLD_Plan, f, indent=2)
+        with open('SMX_Plan.json', 'w') as f:
+            json.dump(SMX_Plan, f, indent=2)      
 
-save_initial_plan = input("是否保存初始方案？(y/n)")
-if save_initial_plan == 'y':
-    # 将XLD_Plan和SMX_Plan保存为json文件
-    with open('XLD_Plan.json', 'w') as f:
-        json.dump(XLD_Plan, f, indent=2)
-    with open('SMX_Plan.json', 'w') as f:
-        json.dump(SMX_Plan, f, indent=2)      
+    return XLD_Plan, SMX_Plan, iniVol_XLD, iniVol_SMX, planNum
+
+# ---------------------Program starts here---------------------
+# 读取Xiaolangdi.json和Sanmenxia.json
+try:
+    xld_file = find_file("Xiaolangdi.json")
+    smx_file = find_file("Sanmenxia.json")
+
+    with open(xld_file, 'r') as f:
+        tempData = json.load(f)
+        XLD_CapCurve = {
+            'WL': tempData.get('CapCurve', {}).get('WL', []),
+            'Vol': tempData.get('CapCurve', {}).get('Vol', [])
+        }
+        XLD_t_in = tempData.get('t', [])
+        XLD_q_in = tempData.get('Inflow', [])
+
+    with open(smx_file, 'r') as f:
+        tempData = json.load(f)
+        SMX_CapCurve = {
+            'WL': tempData.get('CapCurve', {}).get('WL', []),
+            'Vol': tempData.get('CapCurve', {}).get('Vol', [])
+        }
+        SMX_t_in = tempData.get('t', [])
+        SMX_q_in = tempData.get('Inflow', [])
+except FileNotFoundError as e:
+    print(f"Error: {e}")
+except json.JSONDecodeError as e:
+    print(f"Error decoding JSON: {e}")
+
+StartMode = 2 # 1: 生成初始方案，2: 从初始方案文件中读取初始方案, 3: 从PopHistory.json中读取初始方案
+if StartMode == 1:
+    # 调用函数生成初始方案
+    XLD_Plan, SMX_Plan, iniVol_XLD, iniVol_SMX, planNum = generate_ini_plans()
+elif StartMode == 2:
+    # 从文件中读取初始方案
+    with open('XLD_Plan.json', 'r') as f:
+        XLD_Plan = json.load(f)
+    with open('SMX_Plan.json', 'r') as f:
+        SMX_Plan = json.load(f)
+    planNum = len(XLD_Plan)
+elif StartMode == 3:
+    # 提示用户输入代数
+    generation = int(input("请输入代数: "))
+
+    # 从PopHistory.json中读取generation代数对应的XLD_Plan和SMX_Plan
+    with open('PopHistory.json', 'r') as f:
+        data = json.load(f)
+        XLD_Plan = data['generation'][generation]['XLD_Plan']
+        SMX_Plan = data['generation'][generation]['SMX_Plan']
 
 # 定义可执行文件所在的目录和文件名
 exe_directory = r"E:\一维计算结果\SMX_XLD_LYR\2R20_9\1D_RiverNet_OCTC"  # 替换为你exe文件所在的目录
@@ -464,17 +510,6 @@ for i in range(planNum):
     with open(file_path, 'w') as f:
         json.dump(data, f, indent=2)
 
-def convert_numpy_to_list(obj):
-    """递归地将numpy数组转换为Python列表"""
-    if isinstance(obj, np.ndarray):
-        return obj.tolist()
-    elif isinstance(obj, dict):
-        return {key: convert_numpy_to_list(value) for key, value in obj.items()}
-    elif isinstance(obj, list):
-        return [convert_numpy_to_list(item) for item in obj]
-    else:
-        return obj
-
 # 运行所有模拟并获取case数据
 case = run_all_simulations(planNum, exe_directory, test=False)
 case_serializable = convert_numpy_to_list(case)
@@ -489,14 +524,31 @@ with open(filename, 'w') as f:
 # 使用NSGA-III优化
 #-------------------------------------------------------------------------------------------------------
 
-# 用obj变量存储目标函数值
+# 用obj变量存储目标函数值，并计算constraint violation
 obj = np.zeros((planNum, 3))
+ConstraintViolation = np.zeros((planNum, 2))
 for i in range(planNum):
     obj[i, 0] = -case[i+1][1]["QsDiff"]  #冲淤目标转换成求最小值
     obj[i, 1] = -case[i+1][2]["QsDiff"]
     obj[i, 2] = case[i+1][3]["Obj_flood"]
+
+    # 三门峡是等式约束
+    ConstraintViolation[i, 0] = abs(case[i+1][1]["Zend_lastCS"]/SMX_HyperPara['WlFldContr']-1)
+    # 小浪底是不等式约束
+    Zend_XLD = case[i+1][2]["Zend_lastCS"]
+    VolEnd_XLD = interpolate(Zend_XLD, XLD_CapCurve['WL'], XLD_CapCurve['Vol'])
+    ConstraintViolation[i, 1] = VolEnd_XLD/XLD_HyperPara['volWatSupply']-1
+    if ConstraintViolation[i, 1] > 0:
+        ConstraintViolation[i, 1] = 0
+    else:
+        ConstraintViolation[i,1]=-ConstraintViolation[i,1]
+
+
 P_plans_SMX = SMX_Plan
 P_plans_XLD = XLD_Plan
+# 将P_plans_SMX, P_plans_XLD, obj, generation的数据保存入一个名为PopHistory.json的文件中
+with open('PopHistory.json', 'w') as f:
+    json.dump({'generation': generation, 'P_plans_SMX': P_plans_SMX, 'P_plans_XLD': P_plans_XLD, 'obj': convert_numpy_to_list(obj)}, f, indent=2)
 
 # 导入NSGA-III工具函数
 from nsga3_utils import normalize_objectives, generate_reference_directions, associate_to_reference_directions
