@@ -480,16 +480,24 @@ elif StartMode == 3:
         SMX_Plan = data['generation'][generation]['SMX_Plan']
 
 # 定义可执行文件所在的目录和文件名
-exe_directory = r"E:\一维计算结果\SMX_XLD_LYR\2R20_9\1D_RiverNet_OCTC"  # 替换为你exe文件所在的目录
+exe_directory = r"E:\一维计算结果\SMX_XLD_LYR\2R20_10\1D_RiverNet_OCTC"  # 替换为你exe文件所在的目录
 executable = "1D_RiverNet_OCTC.exe"
 # 在exe_directory下创建planNum个文件夹，文件夹名称为case1, case2, ..., caseNum
 for i in range(planNum):
     case_dir = os.path.join(exe_directory, f"case{i+1}")
     if not os.path.exists(case_dir):
         os.makedirs(case_dir)
-        # 在新创建的case文件夹下复制exe_directory下的Input和Output文件夹
-        shutil.copytree(os.path.join(exe_directory, "Input"), os.path.join(case_dir, "Input"))
-        os.makedirs(os.path.join(case_dir, "Output"))
+    
+    # 检查Input文件夹是否存在，如果存在则删除后重新复制
+    input_dir = os.path.join(case_dir, "Input")
+    if os.path.exists(input_dir):
+        shutil.rmtree(input_dir)
+    shutil.copytree(os.path.join(exe_directory, "Input"), input_dir)
+    
+    # 确保Output文件夹存在
+    output_dir = os.path.join(case_dir, "Output")
+    if not os.path.exists(output_dir):
+        os.makedirs(output_dir)
 
 # 将SMX_Plan和XLD_Plan中i号方案的t和q数组写入case{i+1}/Input/ReservoirOutQ.json中对应的Rhid对象的t和q中
 for i in range(planNum):
