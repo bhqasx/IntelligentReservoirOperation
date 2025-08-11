@@ -1,3 +1,4 @@
+# 更好用的Web版本见https://gemini.google.com/app/967b10a64c9c9383
 import tkinter as tk
 from tkinter import ttk
 from tkinter import filedialog

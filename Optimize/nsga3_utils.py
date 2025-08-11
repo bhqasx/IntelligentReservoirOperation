@@ -160,7 +160,61 @@ def associate_to_reference_directions(obj_normalized, reference_directions):
     
     return distances, associations
 
-def crossover(parent_1, parent_2, mu):
+def crossover_variable(x1, x2, mu, x_min, x_max):
+    """
+    对单个变量进行SBX交叉操作
+    
+    Parameters:
+    x1, x2: 父代变量值
+    mu: 分布指数（分布参数）
+    x_min, x_max: 变量的最小和最大边界
+    
+    Returns:
+    offspring: 交叉后的子代变量值
+    """
+    # 如果两个父代值相等，直接返回
+    if abs(x1 - x2) < 1e-14:
+        return x1
+    
+    # 确保y1 <= y2
+    y1 = min(x1, x2)
+    y2 = max(x1, x2)
+    
+    # 计算beta的边界值（对下界进行截断，避免负值）
+    dl = max(0.0, (y1 - x_min) / (y2 - y1))
+    du = max(0.0, (x_max - y2) / (y2 - y1))
+    beta_1 = 1.0 + 2.0 * dl
+    beta_2 = 1.0 + 2.0 * du
+
+    # 使用 Deb 原始形式，保证 2 - u*alpha > 0
+    alpha_1 = 2.0 - beta_1 ** (-(mu + 1.0))
+    alpha_2 = 2.0 - beta_2 ** (-(mu + 1.0))
+
+    # 选择边界一侧并计算 beta_q（稳定且无负数幂风险）
+    if random.random() <= 0.5:
+        u = random.random()
+        if u <= (1.0 / alpha_1):
+            beta_q = (u * alpha_1) ** (1.0 / (mu + 1.0))
+        else:
+            beta_q = (1.0 / (2.0 - u * alpha_1)) ** (1.0 / (mu + 1.0))
+    else:
+        u = random.random()
+        if u <= (1.0 / alpha_2):
+            beta_q = (u * alpha_2) ** (1.0 / (mu + 1.0))
+        else:
+            beta_q = (1.0 / (2.0 - u * alpha_2)) ** (1.0 / (mu + 1.0))
+
+    # 随机选择生成两个子代中的一个
+    if random.random() <= 0.5:
+        offspring = 0.5 * ((1 + beta_q) * y1 + (1 - beta_q) * y2)
+    else:
+        offspring = 0.5 * ((1 - beta_q) * y1 + (1 + beta_q) * y2)
+
+    # 确保在边界范围内
+    offspring = max(x_min, min(x_max, offspring))
+    return offspring
+
+def crossover(parent_1, parent_2, mu, max_time, max_flow):
     """
     对水库调度方案进行SBX交叉
     
@@ -176,9 +230,9 @@ def crossover(parent_1, parent_2, mu):
     # 对时间序列进行交叉（除了固定的时间点）
     for j in range(1, len(parent_1['t']) - 1):  # 避免交叉第一个和最后一个时间点
         if parent_1['t'][j] is not None and parent_2['t'][j] is not None:
-            # 设置时间的合理边界
-            min_time = max(0, min(parent_1['t'][j], parent_2['t'][j]) * 0.8)
-            max_time = max(parent_1['t'][j], parent_2['t'][j]) * 1.2
+            # 将下界设为offspring中前一个时间，确保非递减
+            prev_t = offspring['t'][j-1]
+            min_time = 0 if prev_t is None else prev_t
             
             offspring['t'][j] = crossover_variable(
                 parent_1['t'][j], parent_2['t'][j], mu, min_time, max_time
@@ -186,15 +240,65 @@ def crossover(parent_1, parent_2, mu):
     
     # 对流量序列进行交叉
     for j in range(len(parent_1['q'])):
-        if parent_1['q'][j] is not None and parent_2['q'][j] is not None:
+        if (
+            parent_1['q'][j] is not None
+            and parent_2['q'][j] is not None
+            and parent_1['q'][j] != 0
+        ):
             # 设置流量的合理边界
             min_flow = 0
-            max_flow = max(parent_1['q'][j], parent_2['q'][j]) * 1.5
             
             offspring['q'][j] = crossover_variable(
                 parent_1['q'][j], parent_2['q'][j], mu, min_flow, max_flow
             )
     
+    return offspring
+
+# 多项式变异：对单个变量在 [x_min, x_max] 上进行多项式变异
+def polynomial_mutation_variable(x, eta, x_min, x_max, mutation_rate):
+    if x is None:
+        return x
+    if random.random() >= mutation_rate:
+        return x
+    if x_max <= x_min:
+        raise ValueError(f"变量边界设置错误: x_max ({x_max}) <= x_min ({x_min})，请检查边界参数设置")
+    # 归一化到 [0,1] 的距离
+    delta1 = (x - x_min) / (x_max - x_min)
+    delta2 = (x_max - x) / (x_max - x_min)
+    u = random.random()
+    mut_pow = 1.0 / (eta + 1.0)
+    if u < 0.5:
+        xy = 1.0 - delta1
+        val = 2.0 * u + (1.0 - 2.0 * u) * (xy ** (eta + 1.0))
+        delta_q = val ** mut_pow - 1.0
+    else:
+        xy = 1.0 - delta2
+        val = 2.0 * (1.0 - u) + 2.0 * (u - 0.5) * (xy ** (eta + 1.0))
+        delta_q = 1.0 - val ** mut_pow
+    x_new = x + delta_q * (x_max - x_min)
+    return max(x_min, min(x_max, x_new))
+
+# 对方案进行变异：时间与流量分别按边界约束变异
+def mutate_plan(offspring, mutation_rate, eta, max_time, max_flow):
+    # 变异时间（保持非递减，首尾不变）
+    if 't' in offspring and offspring['t'] is not None:
+        for j in range(1, len(offspring['t']) - 1):
+            if offspring['t'][j] is not None:
+                prev_t = offspring['t'][j - 1]
+                min_time = 0 if prev_t is None else prev_t
+                offspring['t'][j] = polynomial_mutation_variable(
+                    offspring['t'][j], eta, min_time, max_time, mutation_rate
+                )
+                # 再次保证非递减
+                if prev_t is not None and offspring['t'][j] < prev_t:
+                    offspring['t'][j] = prev_t
+    # 变异流量（仅当当前值不为 None 且不为 0）
+    if 'q' in offspring and offspring['q'] is not None:
+        for j in range(len(offspring['q'])):
+            if offspring['q'][j] is not None and offspring['q'][j] != 0:
+                offspring['q'][j] = polynomial_mutation_variable(
+                    offspring['q'][j], eta, 0.0, max_flow, mutation_rate
+                )
     return offspring
 
 def generate_offspring(P_plans_SMX, P_plans_XLD):
@@ -210,7 +314,13 @@ def generate_offspring(P_plans_SMX, P_plans_XLD):
     Q_plans_SMX: 子代SMX方案
     Q_plans_XLD: 子代XLD方案
     """
-    mu = 1
+    mu = 10    #越小探索性越强，一般默认10-20
+    max_t = 2500 + 48     # 以小浪底结束时间为基准设置
+    max_q_smx = 10974
+    max_q_xld = 13311
+    # 变异参数
+    mutation_rate = 0.1
+    eta_m = 20 #越大变异越小，常见默认20
     pop_size = len(P_plans_SMX)
 
     # 复制父代作为子代的初始值
@@ -243,8 +353,10 @@ def generate_offspring(P_plans_SMX, P_plans_XLD):
             parent_2 = i4
 
         # 交叉操作
-        Q_plans_SMX[i] = crossover(P_plans_SMX[parent_1], P_plans_SMX[parent_2], mu)
-        Q_plans_XLD[i] = crossover(P_plans_XLD[parent_1], P_plans_XLD[parent_2], mu)
-
+        Q_plans_SMX[i] = crossover(P_plans_SMX[parent_1], P_plans_SMX[parent_2], mu, max_t, max_q_smx)
+        Q_plans_XLD[i] = crossover(P_plans_XLD[parent_1], P_plans_XLD[parent_2], mu, max_t, max_q_xld)
+        # 变异操作
+        Q_plans_SMX[i] = mutate_plan(Q_plans_SMX[i], mutation_rate, eta_m, max_t, max_q_smx)
+        Q_plans_XLD[i] = mutate_plan(Q_plans_XLD[i], mutation_rate, eta_m, max_t, max_q_xld)
 
     return Q_plans_SMX, Q_plans_XLD

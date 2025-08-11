@@ -31,6 +31,8 @@ def interpolate(x, x_array, y_array):
 
 #定义一个名为CalculateT的函数，计算达到指定净出流水量所需的时间，从main.js中改写来
 def CalculateT(volTarg, tt, qq, iLastKeyP, iReservoir, dischargeMod, iPlan):
+    global XLD_Plan, SMX_Plan
+    
     t2 = 0
     dt = 4
     if iReservoir == 1:  # XLD reservoir
@@ -336,6 +338,7 @@ def generate_ini_plans():
     planNum: 方案数量
     """
     global iniVol_SMX, iniVol_XLD  # 声明为全局变量，供其他函数使用
+    global XLD_Plan, SMX_Plan
     
     iniWL_XLD = 250.8
     #在终端提示输入小浪底初始水位，并显示当前默认输入值是iniWL_XLD，如果用户输入为空，则使用默认值
@@ -426,7 +429,11 @@ def generate_ini_plans():
         with open('XLD_Plan.json', 'w') as f:
             json.dump(XLD_Plan, f, indent=2)
         with open('SMX_Plan.json', 'w') as f:
-            json.dump(SMX_Plan, f, indent=2)      
+            json.dump(SMX_Plan, f, indent=2)    
+
+    # 在返回前赋值给全局变量
+    globals()['XLD_Plan'] = XLD_Plan
+    globals()['SMX_Plan'] = SMX_Plan  
 
     return XLD_Plan, SMX_Plan, iniVol_XLD, iniVol_SMX, planNum
 
@@ -480,7 +487,7 @@ elif StartMode == 3:
         SMX_Plan = data['generation'][generation]['SMX_Plan']
 
 # 定义可执行文件所在的目录和文件名
-exe_directory = r"E:\一维计算结果\SMX_XLD_LYR\2R20_10\1D_RiverNet_OCTC"  # 替换为你exe文件所在的目录
+exe_directory = r"E:\一维计算结果\SMX_XLD_LYR\2R20_13\1D_RiverNet_OCTC"  # 替换为你exe文件所在的目录
 executable = "1D_RiverNet_OCTC.exe"
 # 在exe_directory下创建planNum个文件夹，文件夹名称为case1, case2, ..., caseNum
 for i in range(planNum):

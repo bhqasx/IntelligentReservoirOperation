@@ -5,6 +5,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 import tkinter as tk
 import numpy as np
 from tkinter import filedialog
+import time
 
 global case
 case = [None]  # 0号位置放个None
@@ -139,7 +140,15 @@ def evaluate_case(case_number, exe_directory):
     # 结束河段循环
 
     # 读取out_dir下的ObjectiveFunctionsValue.TXT
-    with open(os.path.join(out_dir, "ObjectiveFunctionsValue.TXT"), 'r') as f:
+    result_path = os.path.join(out_dir, "ObjectiveFunctionsValue.TXT")
+    wait_time = 0
+    while not os.path.exists(result_path) and wait_time < 10:
+        time.sleep(1)
+        wait_time += 1
+    if not os.path.exists(result_path):
+        print(f"Result file not found for case{case_number}: {result_path}")
+        return 0
+    with open(result_path, 'r') as f:
         lines = f.readlines()
         # 读取第2行，存入temp_id中
         temp_id = lines[1].strip()
@@ -221,4 +230,4 @@ if __name__ == "__main__":
         planNum = args.planNum
     
     # 运行模拟
-    run_all_simulations(planNum, args.exe_dir, args.test) 
+    run_all_simulations(planNum, args.exe_dir, args.test)
