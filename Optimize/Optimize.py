@@ -10,9 +10,8 @@ from run_simulation import run_all_simulations
 # 导入NSGA-III工具函数
 from nsga3_utils import (
     normalize_objectives, 
-    generate_reference_directions, 
-    associate_to_reference_directions,
-    generate_offspring
+    generate_offspring,
+    niching_selection
 )
 
 global SMX_t_in, SMX_q_in, SMX_HyperPara, SMX_CapCurve, iniVol_SMX
@@ -487,7 +486,7 @@ elif StartMode == 3:
         SMX_Plan = data['generation'][generation]['SMX_Plan']
 
 # 定义可执行文件所在的目录和文件名
-exe_directory = r"E:\一维计算结果\SMX_XLD_LYR\2R20_13\1D_RiverNet_OCTC"  # 替换为你exe文件所在的目录
+exe_directory = r"E:\一维计算结果\SMX_XLD_LYR\2R20_14\1D_RiverNet_OCTC"  # 替换为你exe文件所在的目录
 executable = "1D_RiverNet_OCTC.exe"
 # 在exe_directory下创建planNum个文件夹，文件夹名称为case1, case2, ..., caseNum
 for i in range(planNum):
@@ -526,7 +525,7 @@ for i in range(planNum):
         json.dump(data, f, indent=2)
 
 # 运行所有模拟并获取case数据
-case = run_all_simulations(planNum, exe_directory, test=False)
+case, case_status = run_all_simulations(planNum, exe_directory, test=False)
 case_serializable = convert_numpy_to_list(case)
 # 将case中的数据保存为名为PopHistory_Gen{代数}.json的文件
 generation = 1  # 当前代数
@@ -541,7 +540,7 @@ with open(filename, 'w') as f:
 
 # 用obj变量存储目标函数值，并计算constraint violation
 obj = np.zeros((planNum, 3))
-ConstraintViolation = np.zeros((planNum, 2))
+ConstraintViolation = np.zeros((planNum, 3))
 for i in range(planNum):
     obj[i, 0] = -case[i+1][1]["QsDiff"]  #冲淤目标转换成求最小值
     obj[i, 1] = -case[i+1][2]["QsDiff"]
@@ -558,43 +557,167 @@ for i in range(planNum):
     else:
         ConstraintViolation[i,1]=-ConstraintViolation[i,1]
 
+    if case_status[i] == 0:
+        ConstraintViolation[i, 2] = 1
+    else:
+        ConstraintViolation[i, 2] = 0
 
 P_plans_SMX = SMX_Plan
 P_plans_XLD = XLD_Plan
+
+# 生成NSGA-III参考点
+from nsga3_utils import generate_reference_points
+n_objectives = obj.shape[1]  # 从obj数组的列数自动获取目标函数数量
+n_divisions = 4   # 可以根据需要调整，数值越大参考点越多
+reference_points = generate_reference_points(n_objectives, n_divisions)
+
 # 将P_plans_SMX, P_plans_XLD, obj, generation的数据保存入一个名为PopHistory.json的文件中
 with open('PopHistory.json', 'w') as f:
     json.dump({'generation': generation, 'P_plans_SMX': P_plans_SMX, 'P_plans_XLD': P_plans_XLD, 'obj': convert_numpy_to_list(obj)}, f, indent=2)
 
 # 导入NSGA-III工具函数
-from nsga3_utils import normalize_objectives, generate_reference_directions, associate_to_reference_directions
+from nsga3_utils import normalize_objectives
 
 max_gen = 200
 while generation <= max_gen:
     print(f"第{generation}代")
 
-    Q_plans_SMX, Q_plans_XLD = generate_offspring(P_plans_SMX, P_plans_XLD)
+    Q_plans_SMX, Q_plans_XLD = generate_offspring(P_plans_SMX, P_plans_XLD, ConstraintViolation)
+
+    # ------------------------------评估子代--------------------------------
+    for i in range(planNum):
+        file_path = os.path.join(exe_directory, f"case{i+1}", "Input", "ReservoirOutQ.json")
+        with open(file_path, 'r') as f:
+            data = json.load(f)
+
+        for resv in data['Resv']:
+            if resv['RhId'] == 1:
+                resv['t'] = Q_plans_SMX[i]['t']
+                resv['Q'] = Q_plans_SMX[i]['q']
+                resv['numTQ'] = len(Q_plans_SMX[i]['t'])
+            elif resv['RhId'] == 2:
+                resv['t'] = Q_plans_XLD[i]['t']
+                resv['Q'] = Q_plans_XLD[i]['q']
+                resv['numTQ'] = len(Q_plans_XLD[i]['t'])
+
+        with open(file_path, 'w') as f:
+            json.dump(data, f, indent=2)
+
+    # 运行数值模拟
+    case, case_status = run_all_simulations(planNum, exe_directory, test=False)
+
+    # 初始化子代的目标函数值和约束违反矩阵
+    Q_obj = np.zeros((planNum, 3))
+    Q_ConstraintViolation = np.zeros((planNum, 3))
+
+    # 记录目标函数值并计算违约值
+    for i in range(planNum):
+        Q_obj[i, 0] = -case[i+1][1]["QsDiff"]  #冲淤目标转换成求最小值
+        Q_obj[i, 1] = -case[i+1][2]["QsDiff"]
+        Q_obj[i, 2] = case[i+1][3]["Obj_flood"]
+
+        # 三门峡是等式约束
+        Q_ConstraintViolation[i, 0] = abs(case[i+1][1]["Zend_lastCS"]/SMX_HyperPara['WlFldContr']-1)
+        # 小浪底是不等式约束
+        Zend_XLD = case[i+1][2]["Zend_lastCS"]
+        VolEnd_XLD = interpolate(Zend_XLD, XLD_CapCurve['WL'], XLD_CapCurve['Vol'])
+        Q_ConstraintViolation[i, 1] = VolEnd_XLD/XLD_HyperPara['volWatSupply']-1
+        if Q_ConstraintViolation[i, 1] > 0:
+            Q_ConstraintViolation[i, 1] = 0
+        else:
+            Q_ConstraintViolation[i,1]=-Q_ConstraintViolation[i,1]
+
+        if case_status[i] == 0:
+            Q_ConstraintViolation[i, 2] = 1
+        else:
+            Q_ConstraintViolation[i, 2] = 0
+
+    # 合并父代和子代
+    R_plans_SMX = P_plans_SMX + Q_plans_SMX
+    R_plans_XLD = P_plans_XLD + Q_plans_XLD
     
+    # 合并父代和子代的目标函数值
+    R_obj = np.vstack([obj, Q_obj])
+    R_ConstraintViolation = np.vstack([ConstraintViolation, Q_ConstraintViolation])
+
+    # 执行有约束的非支配排序
+    from nsga3_utils import constrained_non_dominated_sorting
+    fronts, ranks = constrained_non_dominated_sorting(R_obj, R_ConstraintViolation)
+    print(f"非支配排序完成，共{len(fronts)}个前沿")
+    for i, front in enumerate(fronts):
+        print(f"前沿{i}: {len(front)}个解")
+
+    # 将各层前沿加入S_plans，构建下一代种群
+    S_plans_SMX = []
+    S_plans_XLD = []
+    S_indices = []  # 记录选中解的原始索引
+    remaining_slots = 0
+    last_front = []
+    
+    for front in fronts:
+        # 检查当前前沿是否可以完全加入
+        if len(S_indices) + len(front) <= planNum:
+            # 完全加入当前前沿
+            S_indices.extend(front)
+        else:
+            # 当前前沿不能完全加入，记录为最后一个前沿
+            remaining_slots = planNum - len(S_indices)
+            last_front = front
+            break  # 达到种群大小限制，终止前沿遍历
+    
+    # 从已经完全加入的前沿中构建部分新种群
+    for idx in S_indices:
+        S_plans_SMX.append(R_plans_SMX[idx])
+        S_plans_XLD.append(R_plans_XLD[idx])
+
+    # 如果需要从最后一个前沿选择
+    if remaining_slots > 0:
+        print(f"需要从最后一个前沿中选择{remaining_slots}个解")
+        
+        # 检查最后一个前沿是否全为非可行解
+        last_front_cv = R_ConstraintViolation[last_front]
+        is_all_infeasible = np.all(np.sum(last_front_cv, axis=1) > 1e-6)
+
+        if is_all_infeasible:
+            print("最后一个前沿均为非可行解，按约束违反度排序选择。")
+            # 按约束违反度升序排序
+            cv_sums = np.sum(last_front_cv, axis=1)
+            sorted_indices = np.argsort(cv_sums)
+            
+            # 选择约束违反度最小的 remaining_slots 个解
+            selected_from_last_front = [last_front[i] for i in sorted_indices[:remaining_slots]]
+        else:
+            # 组合S和Fl中的个体，用于计算理想点和标准化
+            s_union_fl_indices = S_indices + last_front
+            s_union_fl_obj = R_obj[s_union_fl_indices]
+            
+            # 1. 计算理想点和nadir点，nadir点是对极值点的近似，原nsga3论文中没有
+            ideal_point = np.min(s_union_fl_obj, axis=0)
+            nadir_point = np.max(s_union_fl_obj, axis=0)
+            print(f"用于标准化的理想点: {ideal_point}")
+            
+            # 2. 标准化 s_union_fl_obj
+            obj_normalized, _, _ = normalize_objectives(s_union_fl_obj, ideal_point, nadir_point, verbose=False)
+            
+            # 3. 关联参考点并执行小生境选择
+            selected_from_last_front = niching_selection(
+                obj_normalized, last_front, S_indices, reference_points, remaining_slots
+            )
+
+        S_indices.extend(selected_from_last_front)
+        for idx in selected_from_last_front:
+            S_plans_SMX.append(R_plans_SMX[idx])
+            S_plans_XLD.append(R_plans_XLD[idx])
+
+    print(f"选择了{len(S_indices)}个解进入下一代")
+
+    # 更新父代种群为选中的解
+    P_plans_SMX = S_plans_SMX
+    P_plans_XLD = S_plans_XLD
+    
+    # 更新目标函数值和约束违反度
+    obj = R_obj[S_indices]
+    ConstraintViolation = R_ConstraintViolation[S_indices]
+
     # 在循环结束前增加generation计数
-    generation += 1 
-
-
-# 计算理想点（每个目标函数的最小值）
-ideal_point = np.min(obj, axis=0)
-
-# 可选：计算nadir点（每个目标函数的最大值，用于了解目标函数的范围）
-nadir_point = np.max(obj, axis=0)
-
-# 使用NSGA-III标准化
-obj_normalized, extreme_points, intercepts = normalize_objectives(obj, ideal_point, nadir_point, verbose=True)
-
-# 生成参考方向（3目标，分割数为4）
-reference_directions = generate_reference_directions(n_obj=3, n_divisions=4)
-print(f"生成了 {len(reference_directions)} 个参考方向")
-
-# 将解关联到参考方向
-distances, associations = associate_to_reference_directions(obj_normalized, reference_directions)
-print("解到参考方向的距离:", distances)
-print("解关联的参考方向索引:", associations)
-
-
-
+    generation += 1

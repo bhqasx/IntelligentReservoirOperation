@@ -159,7 +159,14 @@ def evaluate_case(case_number, exe_directory):
             else:
                 case[case_number][iReach]["Obj_flood"] = 0
 
-    return case[case_number][3]["Obj_flood"]
+    # 检查是否模拟完成
+    result_path = os.path.join(out_dir, "TimeSM.TXT")
+    # 读取第一行，检查是不是"ok"
+    with open(result_path, 'r') as f:
+        first_line = f.readline().strip()
+        if first_line != "ok":
+            return 0
+    return 1
 
 
 
@@ -190,7 +197,7 @@ def run_all_simulations(planNum, exe_directory=None, test=False):
     arguments = [f"case{i+1}" for i in range(planNum)]
     
     # 初始化状态数组
-    case_status = [0] * planNum
+    case_status = [1] * planNum
     
     # 运行模拟
     print(f"开始运行{planNum}个模拟{'（仅测试窗口标题）' if test else ''}")
@@ -203,13 +210,13 @@ def run_all_simulations(planNum, exe_directory=None, test=False):
             # 在每个模拟完成后评估结果
             case_number = i + 1
             case_status[i] = evaluate_case(case_number, exe_directory)
-    
+
     if not test:
         print("Case evaluation results:", case_status)
     else:
         print("窗口标题测试完成")
-    
-    return case  # 返回case变量
+
+    return case, case_status  # 返回case变量和状态
 
 if __name__ == "__main__":
     # 当作为独立程序运行时

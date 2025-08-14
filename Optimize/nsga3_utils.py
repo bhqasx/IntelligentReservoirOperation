@@ -87,78 +87,33 @@ def normalize_objectives(obj, ideal_point, nadir_point, verbose=True):
     
     return obj_normalized, extreme_points, intercepts
 
-def generate_reference_directions(n_obj, n_divisions):
+def generate_reference_points(n_obj=3, n_divisions=4):
     """
-    生成参考方向（简化版本，适用于3目标）
+    生成NSGA-III的结构化参考点
     
     Parameters:
-    n_obj: 目标函数数量
-    n_divisions: 分割数
+    n_obj: 目标函数数量（默认3个目标）
+    n_divisions: 分割数（默认4，可根据需要调整）
     
     Returns:
-    reference_directions: 参考方向矩阵
+    reference_points: 参考点矩阵
     """
-    if n_obj == 3:
-        # 对于3目标问题，生成单纯形上的均匀分布点
-        ref_dirs = []
-        for i in range(n_divisions + 1):
-            for j in range(n_divisions + 1 - i):
-                k = n_divisions - i - j
-                ref_dir = np.array([i, j, k]) / n_divisions
-                ref_dirs.append(ref_dir)
-        return np.array(ref_dirs)
-    else:
-        # 简化版本：为其他目标数量生成随机参考方向
-        n_ref = (n_divisions + n_obj - 1) // n_obj * 10  # 估算参考方向数量
-        ref_dirs = np.random.random((n_ref, n_obj))
-        # 标准化到单位单纯形
-        ref_dirs = ref_dirs / np.sum(ref_dirs, axis=1, keepdims=True)
-        return ref_dirs
-
-def associate_to_reference_directions(obj_normalized, reference_directions):
-    """
-    将解关联到参考方向
+    def generator(r_points, M, Q, T, D):
+        """递归生成参考点"""
+        points = []
+        if (D == M - 1):
+            r_points[D] = Q / T
+            points.append(r_points.copy())
+        elif (D != M - 1):
+            for i in range(Q + 1):
+                r_points[D] = i / T
+                points.extend(generator(r_points.copy(), M, Q - i, T, D + 1))
+        return points
     
-    Parameters:
-    obj_normalized: 标准化后的目标函数值
-    reference_directions: 参考方向
+    # 使用递归生成器生成参考点
+    reference_points = np.array(generator(np.zeros(n_obj), n_obj, n_divisions, n_divisions, 0))
     
-    Returns:
-    distances: 每个解到其最近参考方向的距离
-    associations: 每个解关联的参考方向索引
-    """
-    n_solutions = obj_normalized.shape[0]
-    n_ref = reference_directions.shape[0]
-    
-    distances = np.zeros(n_solutions)
-    associations = np.zeros(n_solutions, dtype=int)
-    
-    for i in range(n_solutions):
-        min_distance = float('inf')
-        best_ref = 0
-        
-        for j in range(n_ref):
-            # 计算点到参考方向的垂直距离
-            ref_dir = reference_directions[j]
-            point = obj_normalized[i]
-            
-            # 投影长度
-            projection_length = np.dot(point, ref_dir) / np.linalg.norm(ref_dir)
-            
-            # 投影点
-            projection = projection_length * ref_dir / np.linalg.norm(ref_dir)
-            
-            # 垂直距离
-            distance = np.linalg.norm(point - projection)
-            
-            if distance < min_distance:
-                min_distance = distance
-                best_ref = j
-        
-        distances[i] = min_distance
-        associations[i] = best_ref
-    
-    return distances, associations
+    return reference_points
 
 def crossover_variable(x1, x2, mu, x_min, x_max):
     """
@@ -301,15 +256,15 @@ def mutate_plan(offspring, mutation_rate, eta, max_time, max_flow):
                 )
     return offspring
 
-def generate_offspring(P_plans_SMX, P_plans_XLD):
+def generate_offspring(P_plans_SMX, P_plans_XLD, CV):
     """
     生成子代种群
     
     Parameters:
     P_plans_SMX: 父代SMX方案
-    P_plans_XLD: 父代XLD方案  
-    obj: 目标函数值矩阵
-    
+    P_plans_XLD: 父代XLD方案
+    CV: 约束违反度
+
     Returns:
     Q_plans_SMX: 子代SMX方案
     Q_plans_XLD: 子代XLD方案
@@ -338,19 +293,29 @@ def generate_offspring(P_plans_SMX, P_plans_XLD):
             # 如果种群太小，允许重复选择
             i1, i2, i3, i4 = random.choices(available_indices, k=4)
         
-        # 选择parent_1（参照breeding函数的选择机制）
-        rand = int.from_bytes(os.urandom(8), byteorder='big') / ((1 << 64) - 1)
-        if rand > 0.5:
+        # 使用带约束的二元锦标赛选择 parent_1
+        cv1 = np.sum(CV[i1])
+        cv2 = np.sum(CV[i2])
+        if cv1 < 1e-6 and cv2 < 1e-6:  # 两个都可行，随机选择
+            parent_1 = random.choice([i1, i2])
+        elif cv1 < cv2:
             parent_1 = i1
-        else:
+        elif cv2 < cv1:
             parent_1 = i2
+        else:  # 约束违反度相同（且不都为0），随机选择
+            parent_1 = random.choice([i1, i2])
             
-        # 选择parent_2
-        rand = int.from_bytes(os.urandom(8), byteorder='big') / ((1 << 64) - 1)
-        if rand > 0.5:
+        # 使用带约束的二元锦标赛选择 parent_2
+        cv3 = np.sum(CV[i3])
+        cv4 = np.sum(CV[i4])
+        if cv3 < 1e-6 and cv4 < 1e-6:  # 两个都可行，随机选择
+            parent_2 = random.choice([i3, i4])
+        elif cv3 < cv4:
             parent_2 = i3
-        else:
+        elif cv4 < cv3:
             parent_2 = i4
+        else:  # 约束违反度相同（且不都为0），随机选择
+            parent_2 = random.choice([i3, i4])
 
         # 交叉操作
         Q_plans_SMX[i] = crossover(P_plans_SMX[parent_1], P_plans_SMX[parent_2], mu, max_t, max_q_smx)
@@ -360,3 +325,224 @@ def generate_offspring(P_plans_SMX, P_plans_XLD):
         Q_plans_XLD[i] = mutate_plan(Q_plans_XLD[i], mutation_rate, eta_m, max_t, max_q_xld)
 
     return Q_plans_SMX, Q_plans_XLD
+
+def niching_selection(obj_normalized, last_front, s_indices, reference_points, remaining_slots):
+    """
+    执行NSGA-III的小生境选择过程。
+    
+    Parameters:
+    obj_normalized: S和Fl中所有个体的标准化目标函数值
+    last_front: 最后一个前沿的个体索引列表 (相对于R)
+    s_indices: 已选入下一代的个体索引列表 (相对于R)
+    reference_points: 参考点矩阵
+    remaining_slots: 需要从最后一个前沿选择的个体数量
+
+    Returns:
+    selected_from_last_front: 从最后一个前沿中选出的个体索引列表
+    """
+    pop_size = len(s_indices) + len(last_front)
+    n_obj = obj_normalized.shape[1]
+    n_ref_points = len(reference_points)
+
+    # 1. 关联操作 (Association)
+    # --------------------------
+    
+    # 初始化每个参考点的关联列表和niche count
+    associations = {i: [] for i in range(n_ref_points)}
+    niche_counts = np.zeros(n_ref_points, dtype=int)
+    
+    # 将 obj_normalized 分为已选部分(S)和最后前沿部分(Fl)
+    # s_indices 和 last_front 是 R 中的索引，而 obj_normalized 是按 s_indices + last_front 的顺序排列的
+    s_obj_normalized = obj_normalized[:len(s_indices)]
+    last_front_obj_normalized = obj_normalized[len(s_indices):]
+
+    # a. 对已选种群 S 进行关联，并计算初始niche_counts
+    if len(s_indices) > 0:
+        # 计算每个解到所有参考点的垂直距离
+        dist_matrix = np.full((len(s_indices), n_ref_points), np.inf)
+        for i in range(len(s_indices)):
+            for j in range(n_ref_points):
+                # 计算点到线的垂直距离
+                w = reference_points[j]
+                norm_w_sq = np.dot(w, w)
+                proj = np.dot(s_obj_normalized[i], w) / norm_w_sq
+                dist = np.linalg.norm(s_obj_normalized[i] - proj * w)
+                dist_matrix[i, j] = dist
+        
+        # 找到每个解最近的参考点
+        closest_ref_indices = np.argmin(dist_matrix, axis=1)
+        
+        # 更新niche_counts
+        for ref_idx in closest_ref_indices:
+            niche_counts[ref_idx] += 1
+
+    # b. 对最后前沿 Fl 进行关联
+    if len(last_front) > 0:
+        # 计算每个解到所有参考点的垂直距离
+        dist_matrix_fl = np.full((len(last_front), n_ref_points), np.inf)
+        for i in range(len(last_front)):
+            for j in range(n_ref_points):
+                w = reference_points[j]
+                norm_w_sq = np.dot(w, w)
+                proj = np.dot(last_front_obj_normalized[i], w) / norm_w_sq
+                dist = np.linalg.norm(last_front_obj_normalized[i] - proj * w)
+                dist_matrix_fl[i, j] = dist
+        
+        # 找到每个解最近的参考点
+        closest_ref_indices_fl = np.argmin(dist_matrix_fl, axis=1)
+        
+        # 将Fl中的解加入对应参考点的关联列表
+        for i, ref_idx in enumerate(closest_ref_indices_fl):
+            original_index = last_front[i]  # 获取在R中的原始索引
+            distance = dist_matrix_fl[i, ref_idx]
+            associations[ref_idx].append({'index': original_index, 'dist': distance})
+
+    # 2. Niche Count 和选择
+    # --------------------------------
+    selected_from_last_front = []
+    
+    # 找出Fl中实际关联到参考点的个体
+    available_in_fl = set()
+    for associated_list in associations.values():
+        for item in associated_list:
+            available_in_fl.add(item['index'])
+
+    # 循环选择，直到填满剩余名额
+    while len(selected_from_last_front) < remaining_slots:
+        # 找出Fl中还有候选解的参考点
+        active_ref_points = [
+            j for j, associated_list in associations.items() if associated_list
+        ]
+        
+        if not active_ref_points:
+            # 如果Fl中没有更多可选择的解，但名额未满（不太可能发生，除非Fl为空）
+            # 从所有未被选中的Fl解中随机选择
+            remaining_to_select = remaining_slots - len(selected_from_last_front)
+            if remaining_to_select > 0:
+                pool = list(available_in_fl)
+                selected_from_last_front.extend(random.sample(pool, min(len(pool), remaining_to_select)))
+            break
+
+        # 找到niche count最小的参考点
+        min_niche_count = np.min(niche_counts[active_ref_points])
+        potential_ref_indices = [
+            j for j in active_ref_points if niche_counts[j] == min_niche_count
+        ]
+        
+        # 从中随机选择一个参考点
+        chosen_ref_idx = random.choice(potential_ref_indices)
+        
+        associated_solutions = associations[chosen_ref_idx]
+        
+        # 根据niche count选择策略
+        if niche_counts[chosen_ref_idx] == 0:
+            # 选择距离最近的解
+            best_sol = min(associated_solutions, key=lambda x: x['dist'])
+        else:
+            # 随机选择一个解
+            best_sol = random.choice(associated_solutions)
+            
+        # 添加到选择列表
+        selected_from_last_front.append(best_sol['index'])
+        
+        # 从所有关联列表中移除已选中的解
+        available_in_fl.remove(best_sol['index'])
+        for ref_idx in associations:
+            associations[ref_idx] = [
+                s for s in associations[ref_idx] if s['index'] != best_sol['index']
+            ]
+            
+        # 更新niche count
+        niche_counts[chosen_ref_idx] += 1
+ 
+    return selected_from_last_front
+
+def dominates_with_constraints(obj1, cv1, obj2, cv2):
+    """
+    判断解1是否支配解2（考虑约束）
+    
+    Parameters:
+    obj1, obj2: 目标函数值数组
+    cv1, cv2: 约束违反度数组
+    
+    Returns:
+    bool: 解1是否支配解2
+    """
+    # 计算总约束违反度
+    total_cv1 = np.sum(cv1)
+    total_cv2 = np.sum(cv2)
+    
+    # 情况1：两个解都可行
+    if total_cv1 <= 1e-10 and total_cv2 <= 1e-10:
+        # 使用目标函数进行支配比较
+        better = np.all(obj1 <= obj2)
+        strictly_better = np.any(obj1 < obj2)
+        return better and strictly_better
+    
+    # 情况2：一个可行一个不可行
+    elif total_cv1 <= 1e-10 and total_cv2 > 1e-10:
+        return True  # 可行解支配不可行解
+    elif total_cv1 > 1e-10 and total_cv2 <= 1e-10:
+        return False  # 不可行解不支配可行解
+    
+    # 情况3：两个解都不可行
+    else:
+        # 约束违反度小的支配约束违反度大的
+        return total_cv1 < total_cv2
+
+def constrained_non_dominated_sorting(obj, constraint_violation):
+    """
+    有约束的非支配排序
+    
+    Parameters:
+    obj: 目标函数值矩阵 (n_solutions x n_objectives)
+    constraint_violation: 约束违反度矩阵 (n_solutions x n_constraints)
+    
+    Returns:
+    fronts: 前沿列表，每个前沿包含解的索引
+    ranks: 每个解的等级
+    """
+    n_solutions = obj.shape[0]
+    
+    # 初始化
+    dominated_solutions = [[] for _ in range(n_solutions)]  # 每个解支配的解集合
+    domination_count = np.zeros(n_solutions)  # 每个解被支配的次数
+    ranks = np.zeros(n_solutions, dtype=int)
+    
+    # 计算支配关系
+    for i in range(n_solutions):
+        for j in range(n_solutions):
+            if i != j:
+                if dominates_with_constraints(obj[i], constraint_violation[i], 
+                                            obj[j], constraint_violation[j]):
+                    dominated_solutions[i].append(j)
+                elif dominates_with_constraints(obj[j], constraint_violation[j], 
+                                              obj[i], constraint_violation[i]):
+                    domination_count[i] += 1
+    
+    # 找到第一前沿（未被任何解支配的解）
+    fronts = []
+    current_front = []
+    for i in range(n_solutions):
+        if domination_count[i] == 0:
+            current_front.append(i)
+            ranks[i] = 0
+    
+    fronts.append(current_front)
+    
+    # 构建后续前沿
+    front_index = 0
+    while front_index < len(fronts) and len(fronts[front_index]) > 0:
+        next_front = []
+        for i in fronts[front_index]:
+            for j in dominated_solutions[i]:
+                domination_count[j] -= 1
+                if domination_count[j] == 0:
+                    next_front.append(j)
+                    ranks[j] = front_index + 1
+        
+        if len(next_front) > 0:
+            fronts.append(next_front)
+        front_index += 1
+    
+    return fronts, ranks
