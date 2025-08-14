@@ -13,6 +13,8 @@ from nsga3_utils import (
     generate_offspring,
     niching_selection
 )
+import matplotlib.pyplot as plt
+from mpl_toolkits.mplot3d import Axes3D
 
 global SMX_t_in, SMX_q_in, SMX_HyperPara, SMX_CapCurve, iniVol_SMX
 
@@ -197,6 +199,27 @@ def CalculateRefillT(volChange, tt, qq, ttNat, qqNat, tCtrl, qCtrl):
     t = (vol_out + (qCurrent + qPre) * tPre / 2 - qNext * tNext) / ((qCurrent + qPre) / 2 - qNext)
 
     return t
+
+def setup_plot():
+    """初始化3D绘图"""
+    plt.ion()  # 开启交互模式
+    fig = plt.figure(figsize=(8, 6))
+    ax = fig.add_subplot(111, projection='3d')
+    ax.set_xlabel('Obj1: -SMX QsDiff')
+    ax.set_ylabel('Obj2: -XLD QsDiff')
+    ax.set_zlabel('Obj3: Flood Obj')
+    return fig, ax
+
+def update_plot(ax, fig, obj, generation):
+    """更新3D散点图"""
+    ax.clear()
+    ax.scatter(obj[:, 0], obj[:, 1], obj[:, 2], c='b', marker='o')
+    ax.set_xlabel('Obj1: -SMX QsDiff')
+    ax.set_ylabel('Obj2: -XLD QsDiff')
+    ax.set_zlabel('Obj3: Flood Obj')
+    ax.set_title(f'Generation: {generation}')
+    fig.canvas.draw()
+    plt.pause(0.1)
 
 # 读取文件XLD_keypoints.json和SMX_keypoints.json，如果这两个文件不在当前目录下，则从上一级目录中寻找
 # 找到后，将数据分别存入XLD_KeyP和SMX_KeyP
@@ -578,6 +601,10 @@ with open('PopHistory.json', 'w') as f:
 # 导入NSGA-III工具函数
 from nsga3_utils import normalize_objectives
 
+# 初始化绘图
+fig, ax = setup_plot()
+update_plot(ax, fig, obj, generation)
+
 max_gen = 200
 while generation <= max_gen:
     print(f"第{generation}代")
@@ -718,6 +745,9 @@ while generation <= max_gen:
     # 更新目标函数值和约束违反度
     obj = R_obj[S_indices]
     ConstraintViolation = R_ConstraintViolation[S_indices]
+
+    # 更新绘图
+    update_plot(ax, fig, obj, generation)
 
     # 在循环结束前增加generation计数
     generation += 1
