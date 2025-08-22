@@ -385,7 +385,7 @@ def generate_ini_plans():
     iniVol_SMX = interpolate(iniWL_SMX, xx, yy)
 
     # 设置方案数量
-    planNum = 4
+    planNum = 15
     # 用一个数据结构存储XLD的planNum个方案，其中每个方案都有t和q两个数组，且数组长度与XLD_KeyP中的t数组长度相同
     XLD_Plan = []
     for i in range(planNum):
@@ -487,7 +487,7 @@ except FileNotFoundError as e:
 except json.JSONDecodeError as e:
     print(f"Error decoding JSON: {e}")
 
-StartMode = 2 # 1: 生成初始方案，2: 从初始方案文件中读取初始方案, 3: 从PopHistory.json中读取初始方案
+StartMode = 1 # 1: 生成初始方案，2: 从初始方案文件中读取初始方案, 3: 从PopHistory.json中读取初始方案
 if StartMode == 1:
     # 调用函数生成初始方案
     XLD_Plan, SMX_Plan, iniVol_XLD, iniVol_SMX, planNum = generate_ini_plans()
@@ -509,7 +509,7 @@ elif StartMode == 3:
         SMX_Plan = data['generation'][generation]['SMX_Plan']
 
 # 定义可执行文件所在的目录和文件名
-exe_directory = r"E:\一维计算结果\SMX_XLD_LYR\2R20_14\1D_RiverNet_OCTC"  # 替换为你exe文件所在的目录
+exe_directory = r"D:\服务器计算结果\2R20_14_server\1D_RiverNet_OCTC"  # 替换为你exe文件所在的目录
 executable = "1D_RiverNet_OCTC.exe"
 # 在exe_directory下创建planNum个文件夹，文件夹名称为case1, case2, ..., caseNum
 for i in range(planNum):
