@@ -91,9 +91,16 @@ def evaluate_case(case_number, exe_directory):
                 if line.strip():
                     columns = line.split()
                     if len(columns) >= 11:
-                        time_values.append(float(columns[1]))
-                        qin_values.append(float(columns[3]))
-                        sus_values.append(float(columns[10]))
+                        try:
+                            time_values.append(float(columns[1]))
+                            qin_values.append(float(columns[3]))
+                            sus_values.append(float(columns[10]))
+                        except ValueError:
+                            time_values.append(np.nan)
+                            qin_values.append(np.nan)
+                            sus_values.append(np.nan)
+                            print(f"警告: 在 case{case_number} 的 FlowCS 1.txt 中遇到无效数据行，已停止解析该文件。")
+                            break
 
             # 将列表转换为NumPy数组
             case[case_number][iReach]["Time"] = np.array(time_values)
@@ -117,9 +124,16 @@ def evaluate_case(case_number, exe_directory):
                 if line.strip():
                     columns = line.split()
                     if len(columns) >= 11:
-                        qin_values.append(float(columns[3]))
-                        sus_values.append(float(columns[10]))
-                        z_values.append(float(columns[2]))
+                        try:
+                            qin_values.append(float(columns[3]))
+                            sus_values.append(float(columns[10]))
+                            z_values.append(float(columns[2]))
+                        except ValueError:
+                            qin_values.append(np.nan)
+                            sus_values.append(np.nan)
+                            z_values.append(np.nan)
+                            print(f"警告: 在 case{case_number} 的 FlowCS {flowcs_num}.txt 中遇到无效数据行，已停止解析该文件。")
+                            break
 
             # 将列表转换为NumPy数组
             case[case_number][iReach]["Qout"] = np.array(qin_values)

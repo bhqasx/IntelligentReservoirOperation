@@ -203,21 +203,42 @@ def CalculateRefillT(volChange, tt, qq, ttNat, qqNat, tCtrl, qCtrl):
 def setup_plot():
     """初始化3D绘图"""
     plt.ion()  # 开启交互模式
-    fig = plt.figure(figsize=(8, 6))
-    ax = fig.add_subplot(111, projection='3d')
-    ax.set_xlabel('Obj1: -SMX QsDiff')
-    ax.set_ylabel('Obj2: -XLD QsDiff')
-    ax.set_zlabel('Obj3: Flood Obj')
-    return fig, ax
+    fig = plt.figure(figsize=(16, 6))
+    
+    # 左侧子图：目标函数
+    ax1 = fig.add_subplot(1, 2, 1, projection='3d')
+    ax1.set_xlabel('Obj1: -SMX QsDiff')
+    ax1.set_ylabel('Obj2: -XLD QsDiff')
+    ax1.set_zlabel('Obj3: Flood Obj')
+    ax1.set_title('Objective Space')
 
-def update_plot(ax, fig, obj, generation):
+    # 右侧子图：约束违反值
+    ax2 = fig.add_subplot(1, 2, 2, projection='3d')
+    ax2.set_xlabel('CV1: SMX WL')
+    ax2.set_ylabel('CV2: XLD Vol')
+    ax2.set_zlabel('CV3: Sim Status')
+    ax2.set_title('Constraint Violation')
+    
+    return fig, ax1, ax2
+
+def update_plot(fig, ax1, ax2, obj, constraint_violation, generation):
     """更新3D散点图"""
-    ax.clear()
-    ax.scatter(obj[:, 0], obj[:, 1], obj[:, 2], c='b', marker='o')
-    ax.set_xlabel('Obj1: -SMX QsDiff')
-    ax.set_ylabel('Obj2: -XLD QsDiff')
-    ax.set_zlabel('Obj3: Flood Obj')
-    ax.set_title(f'Generation: {generation}')
+    # 更新目标函数图
+    ax1.clear()
+    ax1.scatter(obj[:, 0], obj[:, 1], obj[:, 2], c='b', marker='o')
+    ax1.set_xlabel('Obj1: -SMX QsDiff')
+    ax1.set_ylabel('Obj2: -XLD QsDiff')
+    ax1.set_zlabel('Obj3: Flood Obj')
+    ax1.set_title(f'Objective Space (Gen: {generation})')
+
+    # 更新约束违反值图
+    ax2.clear()
+    ax2.scatter(constraint_violation[:, 0], constraint_violation[:, 1], constraint_violation[:, 2], c='r', marker='^')
+    ax2.set_xlabel('CV1: SMX WL')
+    ax2.set_ylabel('CV2: XLD Vol')
+    ax2.set_zlabel('CV3: Sim Status')
+    ax2.set_title(f'Constraint Violation (Gen: {generation})')
+
     fig.canvas.draw()
     plt.pause(0.1)
 
@@ -487,7 +508,7 @@ except FileNotFoundError as e:
 except json.JSONDecodeError as e:
     print(f"Error decoding JSON: {e}")
 
-StartMode = 1 # 1: 生成初始方案，2: 从初始方案文件中读取初始方案, 3: 从PopHistory.json中读取初始方案
+StartMode = 2 # 1: 生成初始方案，2: 从初始方案文件中读取初始方案, 3: 从PopHistory.json中读取初始方案
 if StartMode == 1:
     # 调用函数生成初始方案
     XLD_Plan, SMX_Plan, iniVol_XLD, iniVol_SMX, planNum = generate_ini_plans()
@@ -500,61 +521,71 @@ elif StartMode == 2:
     planNum = len(XLD_Plan)
 elif StartMode == 3:
     # 提示用户输入代数
-    generation = int(input("请输入代数: "))
+    generation_to_load = input("请输入要加载的代数: ")
+    generation = int(generation_to_load)
 
-    # 从PopHistory.json中读取generation代数对应的XLD_Plan和SMX_Plan
+    # 从PopHistory.json中读取指定代数的数据
     with open('PopHistory.json', 'r') as f:
         data = json.load(f)
-        XLD_Plan = data['generation'][generation]['XLD_Plan']
-        SMX_Plan = data['generation'][generation]['SMX_Plan']
+        generation_data = data['generations'][generation_to_load]
+        XLD_Plan = generation_data['P_plans_XLD']
+        SMX_Plan = generation_data['P_plans_SMX']
+        obj = np.array(generation_data['obj'])
+        ConstraintViolation = np.array(generation_data['ConstraintViolation'])
+    
+    planNum = len(XLD_Plan)
+    print(f"已从第 {generation} 代加载数据，将从第 {generation + 1} 代开始优化。")
 
-# 定义可执行文件所在的目录和文件名
+# 定义可执行文件所在的目录，此路径对所有模式都必要
 exe_directory = r"D:\服务器计算结果\2R20_14_server\1D_RiverNet_OCTC"  # 替换为你exe文件所在的目录
-executable = "1D_RiverNet_OCTC.exe"
-# 在exe_directory下创建planNum个文件夹，文件夹名称为case1, case2, ..., caseNum
-for i in range(planNum):
-    case_dir = os.path.join(exe_directory, f"case{i+1}")
-    if not os.path.exists(case_dir):
-        os.makedirs(case_dir)
-    
-    # 检查Input文件夹是否存在，如果存在则删除后重新复制
-    input_dir = os.path.join(case_dir, "Input")
-    if os.path.exists(input_dir):
-        shutil.rmtree(input_dir)
-    shutil.copytree(os.path.join(exe_directory, "Input"), input_dir)
-    
-    # 确保Output文件夹存在
-    output_dir = os.path.join(case_dir, "Output")
-    if not os.path.exists(output_dir):
-        os.makedirs(output_dir)
 
-# 将SMX_Plan和XLD_Plan中i号方案的t和q数组写入case{i+1}/Input/ReservoirOutQ.json中对应的Rhid对象的t和q中
-for i in range(planNum):
-    file_path = os.path.join(exe_directory, f"case{i+1}", "Input", "ReservoirOutQ.json")
-    with open(file_path, 'r') as f:
-        data = json.load(f)
-    
-    for resv in data['Resv']:
-        if resv['RhId'] == 1:
-            resv['t'] = SMX_Plan[i]['t']
-            resv['Q'] = SMX_Plan[i]['q']
-            resv['numTQ'] = len(SMX_Plan[i]['t'])
-        elif resv['RhId'] == 2:
-            resv['t'] = XLD_Plan[i]['t']
-            resv['Q'] = XLD_Plan[i]['q']
-            resv['numTQ'] = len(XLD_Plan[i]['t'])
-    
-    with open(file_path, 'w') as f:
-        json.dump(data, f, indent=2)
+# 仅当不是从历史记录恢复时，才运行初始模拟
+if StartMode != 3:
+    executable = "1D_RiverNet_OCTC.exe"
+    # 在exe_directory下创建planNum个文件夹，文件夹名称为case1, case2, ..., caseNum
+    for i in range(planNum):
+        case_dir = os.path.join(exe_directory, f"case{i+1}")
+        if not os.path.exists(case_dir):
+            os.makedirs(case_dir)
+        
+        # 检查Input文件夹是否存在，如果存在则删除后重新复制
+        input_dir = os.path.join(case_dir, "Input")
+        if os.path.exists(input_dir):
+            shutil.rmtree(input_dir)
+        shutil.copytree(os.path.join(exe_directory, "Input"), input_dir)
+        
+        # 确保Output文件夹存在
+        output_dir = os.path.join(case_dir, "Output")
+        if not os.path.exists(output_dir):
+            os.makedirs(output_dir)
 
-# 运行所有模拟并获取case数据
-case, case_status = run_all_simulations(planNum, exe_directory, test=False)
-case_serializable = convert_numpy_to_list(case)
-# 将case中的数据保存为名为PopHistory_Gen{代数}.json的文件
-generation = 1  # 当前代数
-filename = f'PopHistory_Gen{generation}.json'
-with open(filename, 'w') as f:
-    json.dump({'i_gen': generation, 'case': case_serializable}, f, indent=2)
+    # 将SMX_Plan和XLD_Plan中i号方案的t和q数组写入case{i+1}/Input/ReservoirOutQ.json中对应的Rhid对象的t和q中
+    for i in range(planNum):
+        file_path = os.path.join(exe_directory, f"case{i+1}", "Input", "ReservoirOutQ.json")
+        with open(file_path, 'r') as f:
+            data = json.load(f)
+        
+        for resv in data['Resv']:
+            if resv['RhId'] == 1:
+                resv['t'] = SMX_Plan[i]['t']
+                resv['Q'] = SMX_Plan[i]['q']
+                resv['numTQ'] = len(SMX_Plan[i]['t'])
+            elif resv['RhId'] == 2:
+                resv['t'] = XLD_Plan[i]['t']
+                resv['Q'] = XLD_Plan[i]['q']
+                resv['numTQ'] = len(XLD_Plan[i]['t'])
+        
+        with open(file_path, 'w') as f:
+            json.dump(data, f, indent=2)
+
+    # 运行所有模拟并获取case数据
+    case, case_status = run_all_simulations(planNum, exe_directory, test=False)
+    case_serializable = convert_numpy_to_list(case)
+    # 将case中的数据保存为名为PopHistory_Gen{代数}.json的文件
+    generation = 1  # 当前代数
+    filename = f'PopHistory_Gen{generation}.json'
+    with open(filename, 'w') as f:
+        json.dump({'i_gen': generation, 'case': case_serializable}, f, indent=2)
 
 
 #-------------------------------------------------------------------------------------------------------
@@ -565,9 +596,18 @@ with open(filename, 'w') as f:
 obj = np.zeros((planNum, 3))
 ConstraintViolation = np.zeros((planNum, 3))
 for i in range(planNum):
-    obj[i, 0] = -case[i+1][1]["QsDiff"]  #冲淤目标转换成求最小值
-    obj[i, 1] = -case[i+1][2]["QsDiff"]
-    obj[i, 2] = case[i+1][3]["Obj_flood"]
+    try:
+        obj[i, 0] = -case[i+1][1]["QsDiff"]  #冲淤目标转换成求最小值
+    except (KeyError, IndexError):
+        obj[i, 0] = np.nan
+    try:
+        obj[i, 1] = -case[i+1][2]["QsDiff"]
+    except (KeyError, IndexError):
+        obj[i, 1] = np.nan
+    try:
+        obj[i, 2] = case[i+1][3]["Obj_flood"]
+    except (KeyError, IndexError):
+        obj[i, 2] = np.nan
 
     # 三门峡是等式约束
     ConstraintViolation[i, 0] = abs(case[i+1][1]["Zend_lastCS"]/SMX_HyperPara['WlFldContr']-1)
@@ -595,15 +635,23 @@ n_divisions = 4   # 可以根据需要调整，数值越大参考点越多
 reference_points = generate_reference_points(n_objectives, n_divisions)
 
 # 将P_plans_SMX, P_plans_XLD, obj, generation的数据保存入一个名为PopHistory.json的文件中
+history_data = {'generations': {}}
+generation_data = {
+    'P_plans_SMX': P_plans_SMX,
+    'P_plans_XLD': P_plans_XLD,
+    'obj': convert_numpy_to_list(obj),
+    'ConstraintViolation': convert_numpy_to_list(ConstraintViolation)
+}
+history_data['generations'][str(generation)] = generation_data
 with open('PopHistory.json', 'w') as f:
-    json.dump({'generation': generation, 'P_plans_SMX': P_plans_SMX, 'P_plans_XLD': P_plans_XLD, 'obj': convert_numpy_to_list(obj)}, f, indent=2)
+    json.dump(history_data, f, indent=2)
 
 # 导入NSGA-III工具函数
 from nsga3_utils import normalize_objectives
 
 # 初始化绘图
-fig, ax = setup_plot()
-update_plot(ax, fig, obj, generation)
+fig, ax1, ax2 = setup_plot()
+update_plot(fig, ax1, ax2, obj, ConstraintViolation, generation)
 
 max_gen = 200
 while generation <= max_gen:
@@ -639,9 +687,18 @@ while generation <= max_gen:
 
     # 记录目标函数值并计算违约值
     for i in range(planNum):
-        Q_obj[i, 0] = -case[i+1][1]["QsDiff"]  #冲淤目标转换成求最小值
-        Q_obj[i, 1] = -case[i+1][2]["QsDiff"]
-        Q_obj[i, 2] = case[i+1][3]["Obj_flood"]
+        try:
+            Q_obj[i, 0] = -case[i+1][1]["QsDiff"]  #冲淤目标转换成求最小值
+        except (KeyError, IndexError):
+            Q_obj[i, 0] = np.nan
+        try:
+            Q_obj[i, 1] = -case[i+1][2]["QsDiff"]
+        except (KeyError, IndexError):
+            Q_obj[i, 1] = np.nan
+        try:
+            Q_obj[i, 2] = case[i+1][3]["Obj_flood"]
+        except (KeyError, IndexError):
+            Q_obj[i, 2] = np.nan
 
         # 三门峡是等式约束
         Q_ConstraintViolation[i, 0] = abs(case[i+1][1]["Zend_lastCS"]/SMX_HyperPara['WlFldContr']-1)
@@ -746,8 +803,39 @@ while generation <= max_gen:
     obj = R_obj[S_indices]
     ConstraintViolation = R_ConstraintViolation[S_indices]
 
-    # 更新绘图
-    update_plot(ax, fig, obj, generation)
-
     # 在循环结束前增加generation计数
     generation += 1
+
+    # 更新绘图
+    update_plot(fig, ax1, ax2, obj, ConstraintViolation, generation)
+
+    # 读取现有历史数据，并追加新一代数据
+    try:
+        with open('PopHistory.json', 'r') as f:
+            history_data = json.load(f)
+    except (FileNotFoundError, json.JSONDecodeError):
+        history_data = {'generations': {}}
+    
+    generation_data = {
+        'P_plans_SMX': P_plans_SMX,
+        'P_plans_XLD': P_plans_XLD,
+        'obj': convert_numpy_to_list(obj),
+        'ConstraintViolation': convert_numpy_to_list(ConstraintViolation)
+    }
+    history_data['generations'][str(generation)] = generation_data
+    
+    with open('PopHistory.json', 'w') as f:
+        json.dump(history_data, f, indent=2)
+
+    # 检查是否达到最大代数，并询问用户是否继续
+    if generation > max_gen:
+        new_max_gen_str = input(f"已达到最大代数 ({max_gen})。输入新的最大代数以继续，或按 Enter 键退出: ")
+        if new_max_gen_str.isdigit():
+            new_max_gen = int(new_max_gen_str)
+            if new_max_gen > max_gen:
+                max_gen = new_max_gen
+                print(f"优化将继续，直到第 {max_gen} 代。")
+            else:
+                print(f"新数值 ({new_max_gen}) 不大于当前最大代数 ({max_gen})。正在退出。")
+        else:
+            print("正在退出优化。")
