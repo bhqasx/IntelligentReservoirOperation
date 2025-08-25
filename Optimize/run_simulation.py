@@ -143,10 +143,19 @@ def evaluate_case(case_number, exe_directory):
         
         # 计算入库沙量
         qs_in = case[case_number][iReach]["Qin"] * case[case_number][iReach]["SusIn"]
-        qs_in_integral = np.trapz(qs_in, case[case_number][iReach]["Time"])
+        try:
+            qs_in_integral = np.trapz(qs_in, case[case_number][iReach]["Time"])
+        except Exception as e:
+            print(f"警告: 在 case{case_number} 的 FlowCS {flowcs_num}.txt 中计算入库沙量时发生错误：{e}")
+            return 0
+
         # 计算出库沙量
         qs_out = case[case_number][iReach]["Qout"] * case[case_number][iReach]["SusOut"]
-        qs_out_integral = np.trapz(qs_out, case[case_number][iReach]["Time"])
+        try:
+            qs_out_integral = np.trapz(qs_out, case[case_number][iReach]["Time"])
+        except Exception as e:
+            print(f"警告: 在 case{case_number} 的 FlowCS {flowcs_num}.txt 中计算出库沙量时发生错误：{e}")
+            return 0
 
         # 计算入库沙量和出库沙量的差值
         qs_diff = qs_out_integral - qs_in_integral

@@ -15,6 +15,8 @@ from nsga3_utils import (
 )
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
+import matplotlib
+matplotlib.use('TkAgg')  # 使用支持交互的后端
 
 global SMX_t_in, SMX_q_in, SMX_HyperPara, SMX_CapCurve, iniVol_SMX
 
@@ -204,6 +206,7 @@ def setup_plot():
     """初始化3D绘图"""
     plt.ion()  # 开启交互模式
     fig = plt.figure(figsize=(16, 6))
+    fig.show()  # 显示窗口
     
     # 左侧子图：目标函数
     ax1 = fig.add_subplot(1, 2, 1, projection='3d')
@@ -239,8 +242,8 @@ def update_plot(fig, ax1, ax2, obj, constraint_violation, generation):
     ax2.set_zlabel('CV3: Sim Status')
     ax2.set_title(f'Constraint Violation (Gen: {generation})')
 
-    fig.canvas.draw()
-    plt.pause(0.1)
+    fig.canvas.draw_idle()  # 使用非阻塞绘制
+    fig.canvas.flush_events()  # 刷新事件队列，确保GUI响应
 
 # 读取文件XLD_keypoints.json和SMX_keypoints.json，如果这两个文件不在当前目录下，则从上一级目录中寻找
 # 找到后，将数据分别存入XLD_KeyP和SMX_KeyP

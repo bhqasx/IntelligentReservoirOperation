@@ -169,7 +169,7 @@ def crossover_variable(x1, x2, mu, x_min, x_max):
     offspring = max(x_min, min(x_max, offspring))
     return offspring
 
-def crossover(parent_1, parent_2, mu, max_time, max_flow):
+def crossover(parent_1, parent_2, mu, max_time, max_flow, reservoir_id):
     """
     对水库调度方案进行SBX交叉
     
@@ -193,6 +193,15 @@ def crossover(parent_1, parent_2, mu, max_time, max_flow):
                 parent_1['t'][j], parent_2['t'][j], mu, min_time, max_time
             )
     
+    if reservoir_id == 1:
+        #对三门峡交叉
+        gene_idx_change=[2, 4]
+        gene_idx_copy=[3, 5]
+    else:
+        #对小浪底交叉
+        gene_idx_change=[0, 2, 4, 5, 7, 9]
+        gene_idx_copy=[1, 3, 6, 8, 10]
+
     # 对流量序列进行交叉
     for j in range(len(parent_1['q'])):
         if (
@@ -200,12 +209,18 @@ def crossover(parent_1, parent_2, mu, max_time, max_flow):
             and parent_2['q'][j] is not None
             and parent_1['q'][j] != 0
         ):
-            # 设置流量的合理边界
-            min_flow = 0
-            
-            offspring['q'][j] = crossover_variable(
-                parent_1['q'][j], parent_2['q'][j], mu, min_flow, max_flow
-            )
+            if j in gene_idx_change:
+                # 只对指定位置进行交叉
+                # 设置流量的合理边界
+                min_flow = 100
+                
+                offspring['q'][j] = crossover_variable(
+                    parent_1['q'][j], parent_2['q'][j], mu, min_flow, max_flow
+                )
+            elif j in gene_idx_copy:
+                # 将j+1位置的基因设为j位置的基因值
+                if j < len(offspring['q']):
+                    offspring['q'][j] = offspring['q'][j-1]
     
     return offspring
 
@@ -252,7 +267,7 @@ def mutate_plan(offspring, mutation_rate, eta, max_time, max_flow):
         for j in range(len(offspring['q'])):
             if offspring['q'][j] is not None and offspring['q'][j] != 0:
                 offspring['q'][j] = polynomial_mutation_variable(
-                    offspring['q'][j], eta, 0.0, max_flow, mutation_rate
+                    offspring['q'][j], eta, 100, max_flow, mutation_rate
                 )
     return offspring
 
@@ -318,8 +333,8 @@ def generate_offspring(P_plans_SMX, P_plans_XLD, CV):
             parent_2 = random.choice([i3, i4])
 
         # 交叉操作
-        Q_plans_SMX[i] = crossover(P_plans_SMX[parent_1], P_plans_SMX[parent_2], mu, max_t, max_q_smx)
-        Q_plans_XLD[i] = crossover(P_plans_XLD[parent_1], P_plans_XLD[parent_2], mu, max_t, max_q_xld)
+        Q_plans_SMX[i] = crossover(P_plans_SMX[parent_1], P_plans_SMX[parent_2], mu, max_t, max_q_smx, 1)
+        Q_plans_XLD[i] = crossover(P_plans_XLD[parent_1], P_plans_XLD[parent_2], mu, max_t, max_q_xld, 2)
         # 变异操作
         Q_plans_SMX[i] = mutate_plan(Q_plans_SMX[i], mutation_rate, eta_m, max_t, max_q_smx)
         Q_plans_XLD[i] = mutate_plan(Q_plans_XLD[i], mutation_rate, eta_m, max_t, max_q_xld)
