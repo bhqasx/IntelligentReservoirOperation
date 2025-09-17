@@ -249,7 +249,7 @@ def polynomial_mutation_variable(x, eta, x_min, x_max, mutation_rate):
     return max(x_min, min(x_max, x_new))
 
 # 对方案进行变异：时间与流量分别按边界约束变异
-def mutate_plan(offspring, mutation_rate, eta, max_time, max_flow):
+def mutate_plan(offspring, mutation_rate, eta, max_time, max_flow, reservoir_id):
     # 变异时间（保持非递减，首尾不变）
     if 't' in offspring and offspring['t'] is not None:
         for j in range(1, len(offspring['t']) - 1):
@@ -262,13 +262,29 @@ def mutate_plan(offspring, mutation_rate, eta, max_time, max_flow):
                 # 再次保证非递减
                 if prev_t is not None and offspring['t'][j] < prev_t:
                     offspring['t'][j] = prev_t
+
+    if reservoir_id == 1:
+        # 对三门峡变异
+        gene_idx_change = [2, 4]
+        gene_idx_copy = [3, 5]
+    else:
+        # 对小浪底变异
+        gene_idx_change = [0, 2, 4, 5, 7, 9]
+        gene_idx_copy = [1, 3, 6, 8, 10]
+
     # 变异流量（仅当当前值不为 None 且不为 0）
     if 'q' in offspring and offspring['q'] is not None:
         for j in range(len(offspring['q'])):
             if offspring['q'][j] is not None and offspring['q'][j] != 0:
-                offspring['q'][j] = polynomial_mutation_variable(
-                    offspring['q'][j], eta, 100, max_flow, mutation_rate
-                )
+                if j in gene_idx_change:
+                    # 只对指定位置进行变异
+                    offspring['q'][j] = polynomial_mutation_variable(
+                        offspring['q'][j], eta, 100, max_flow, mutation_rate
+                    )
+                elif j in gene_idx_copy:
+                    # 将j+1位置的基因设为j位置的基因值
+                    if j < len(offspring['q']):
+                        offspring['q'][j] = offspring['q'][j-1]
     return offspring
 
 def generate_offspring(P_plans_SMX, P_plans_XLD, CV):
@@ -336,8 +352,8 @@ def generate_offspring(P_plans_SMX, P_plans_XLD, CV):
         Q_plans_SMX[i] = crossover(P_plans_SMX[parent_1], P_plans_SMX[parent_2], mu, max_t, max_q_smx, 1)
         Q_plans_XLD[i] = crossover(P_plans_XLD[parent_1], P_plans_XLD[parent_2], mu, max_t, max_q_xld, 2)
         # 变异操作
-        Q_plans_SMX[i] = mutate_plan(Q_plans_SMX[i], mutation_rate, eta_m, max_t, max_q_smx)
-        Q_plans_XLD[i] = mutate_plan(Q_plans_XLD[i], mutation_rate, eta_m, max_t, max_q_xld)
+        Q_plans_SMX[i] = mutate_plan(Q_plans_SMX[i], mutation_rate, eta_m, max_t, max_q_smx, 1)
+        Q_plans_XLD[i] = mutate_plan(Q_plans_XLD[i], mutation_rate, eta_m, max_t, max_q_xld, 2)
 
     return Q_plans_SMX, Q_plans_XLD
 
