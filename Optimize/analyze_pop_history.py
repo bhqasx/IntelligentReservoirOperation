@@ -177,18 +177,34 @@ def create_comparison_plots(obj_by_gen, generations):
     ax4 = axes[1, 1]
     obj_means = calculate_objective_means(obj_by_gen)
 
-    # 绘制三条趋势线
-    colors = ['blue', 'green', 'red']
-    labels = ['目标函数1 (-SMX QsDiff)', '目标函数2 (-XLD QsDiff)', '目标函数3 (Flood Obj)']
+    # 创建右侧副纵轴
+    ax4_right = ax4.twinx()
 
-    for i in range(3):
-        ax4.plot(generations, obj_means[:, i], color=colors[i], linewidth=2,
-                marker='o', markersize=4, label=labels[i])
+    # 绘制前两个目标函数在主轴上
+    colors = ['blue', 'green']
+    labels = ['目标函数1 (-SMX QsDiff)', '目标函数2 (-XLD QsDiff)']
+    lines_left = []
+    for i in range(2):
+        line, = ax4.plot(generations, obj_means[:, i], color=colors[i], linewidth=2,
+                        marker='o', markersize=4, label=labels[i])
+        lines_left.append(line)
 
+    # 绘制第三个目标函数在右侧轴上
+    line_right, = ax4_right.plot(generations, obj_means[:, 2], color='red', linewidth=2,
+                                marker='o', markersize=4, label='目标函数3 (Flood Obj)')
+
+    # 设置轴标签
     ax4.set_xlabel('代数')
-    ax4.set_ylabel('目标函数平均值')
+    ax4.set_ylabel('目标函数1和2平均值')
+    ax4_right.set_ylabel('目标函数3平均值')
+
     ax4.set_title('目标函数平均值随代数变化')
-    ax4.legend()
+    
+    # 合并图例
+    lines = lines_left + [line_right]
+    labels = [l.get_label() for l in lines]
+    ax4.legend(lines, labels, loc='upper left')
+    
     ax4.grid(True, alpha=0.3)
 
     # 调整子图间距
