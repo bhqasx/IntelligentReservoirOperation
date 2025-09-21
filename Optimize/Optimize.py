@@ -643,7 +643,8 @@ generation_data = {
     'P_plans_SMX': P_plans_SMX,
     'P_plans_XLD': P_plans_XLD,
     'obj': convert_numpy_to_list(obj),
-    'ConstraintViolation': convert_numpy_to_list(ConstraintViolation)
+    'ConstraintViolation': convert_numpy_to_list(ConstraintViolation),
+    'pareto_ranks': []  # 第1代尚未进行非支配排序，记录为空列表
 }
 history_data['generations'][str(generation)] = generation_data
 with open('PopHistory.json', 'w') as f:
@@ -806,6 +807,9 @@ while generation <= max_gen:
     obj = R_obj[S_indices]
     ConstraintViolation = R_ConstraintViolation[S_indices]
 
+    # 记录新的父代中个体的帕累托前沿等级
+    pareto_ranks = [ranks[idx] for idx in S_indices]
+
     # 在循环结束前增加generation计数
     generation += 1
 
@@ -823,7 +827,8 @@ while generation <= max_gen:
         'P_plans_SMX': P_plans_SMX,
         'P_plans_XLD': P_plans_XLD,
         'obj': convert_numpy_to_list(obj),
-        'ConstraintViolation': convert_numpy_to_list(ConstraintViolation)
+        'ConstraintViolation': convert_numpy_to_list(ConstraintViolation),
+        'pareto_ranks': pareto_ranks  # 添加帕累托前沿等级记录
     }
     history_data['generations'][str(generation)] = generation_data
     

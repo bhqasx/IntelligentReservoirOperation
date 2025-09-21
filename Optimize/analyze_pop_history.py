@@ -16,6 +16,7 @@ import matplotlib
 matplotlib.use('TkAgg')  # 使用支持交互的后端
 from mpl_toolkits.mplot3d import Axes3D
 import mplcursors
+from scipy.spatial import ConvexHull
 
 def load_pop_history(filename='PopHistory.json'):
     """
@@ -75,6 +76,29 @@ def extract_objectives_by_generation(history_data, generations):
 
     return obj_by_gen
 
+def extract_constraints_by_generation(history_data, generations):
+    """
+    提取每一代的约束违反值
+
+    Parameters:
+    history_data: 历史数据字典
+    generations: 代数列表
+
+    Returns:
+    con_by_gen: 按代数组织的numpy数组，形状为 (n_generations, n_individuals, n_constraints)
+    """
+    n_generations = len(generations)
+    n_individuals = len(history_data['generations'][str(generations[0])]['ConstraintViolation'])
+    n_constraints = len(history_data['generations'][str(generations[0])]['ConstraintViolation'][0])
+
+    con_by_gen = np.zeros((n_generations, n_individuals, n_constraints))
+
+    for i, gen in enumerate(generations):
+        gen_data = history_data['generations'][str(gen)]
+        con_by_gen[i] = np.array(gen_data['ConstraintViolation'])
+
+    return con_by_gen
+
 def calculate_objective_means(obj_by_gen):
     """
     计算每一代每个目标函数的平均值
@@ -87,20 +111,21 @@ def calculate_objective_means(obj_by_gen):
     """
     return np.mean(obj_by_gen, axis=1)
 
-def create_comparison_plots(obj_by_gen, generations):
+def create_comparison_plots(obj_by_gen, con_by_gen, generations):
     """
-    创建四个子图的对比分析
+    创建五个子图的对比分析
 
     Parameters:
     obj_by_gen: 按代数组织的numpy数组
+    con_by_gen: 按代数组织的约束违反值数组
     generations: 代数列表
     """
     # 设置中文字体
     plt.rcParams['font.sans-serif'] = ['SimHei', 'Arial Unicode MS', 'DejaVu Sans']
     plt.rcParams['axes.unicode_minus'] = False
 
-    # 创建4个子图
-    fig, axes = plt.subplots(2, 2, figsize=(16, 12))
+    # 创建5个子图 (3x2布局)
+    fig, axes = plt.subplots(3, 2, figsize=(16, 20))
     fig.suptitle('NSGA-III优化过程分析', fontsize=16, fontweight='bold')
 
     # 获取第一代和最后一代的数据
@@ -207,9 +232,65 @@ def create_comparison_plots(obj_by_gen, generations):
     
     ax4.grid(True, alpha=0.3)
 
+    # 子图5：约束违反值随代数变化趋势
+    ax5 = axes[2, 0]
+    con_means = np.mean(con_by_gen, axis=1)  # 计算每一代的约束违反值平均值
+
+    # 绘制三个约束违反值
+    colors = ['purple', 'orange', 'brown']
+    labels = ['约束1违反值', '约束2违反值', '约束3违反值']
+    for i in range(3):
+        ax5.plot(generations, con_means[:, i], color=colors[i], linewidth=2,
+                marker='o', markersize=4, label=labels[i])
+
+    # 设置轴标签
+    ax5.set_xlabel('代数')
+    ax5.set_ylabel('约束违反值')
+    ax5.set_title('约束违反值随代数变化')
+    ax5.legend()
+    ax5.grid(True, alpha=0.3)
+
     # 调整子图间距
     plt.tight_layout()
-    plt.subplots_adjust(top=0.9)
+    plt.subplots_adjust(top=0.92, hspace=0.3, wspace=0.2)
+
+    return fig
+
+def create_3d_plot(obj_by_gen, generations):
+    """
+    创建3D散点图和凸包表面
+
+    Parameters:
+    obj_by_gen: 按代数组织的numpy数组
+    generations: 代数列表
+    """
+    fig = plt.figure(figsize=(10, 8))
+    ax = fig.add_subplot(111, projection='3d')
+
+    first_gen_data = obj_by_gen[0]
+    last_gen_data = obj_by_gen[-1]
+
+    # 绘制散点
+    ax.scatter(first_gen_data[:, 0], first_gen_data[:, 1], first_gen_data[:, 2], 
+               c='blue', alpha=0.7, label=f'第{generations[0]}代')
+    ax.scatter(last_gen_data[:, 0], last_gen_data[:, 1], last_gen_data[:, 2], 
+               c='red', alpha=0.7, label=f'第{generations[-1]}代')
+
+    # 计算并绘制第一代的凸包表面
+    hull1 = ConvexHull(first_gen_data)
+    ax.plot_trisurf(first_gen_data[:, 0], first_gen_data[:, 1], first_gen_data[:, 2], 
+                    triangles=hull1.simplices, color='blue', alpha=0.3)
+
+    # 计算并绘制最后一代的凸包表面
+    hull2 = ConvexHull(last_gen_data)
+    ax.plot_trisurf(last_gen_data[:, 0], last_gen_data[:, 1], last_gen_data[:, 2], 
+                    triangles=hull2.simplices, color='red', alpha=0.3)
+
+    ax.set_xlabel('目标函数1 (-SMX QsDiff)')
+    ax.set_ylabel('目标函数2 (-XLD QsDiff)')
+    ax.set_zlabel('目标函数3 (Flood Obj)')
+    ax.set_title('第1代和最后一代3D目标函数分布')
+    ax.legend()
 
     return fig
 
@@ -260,21 +341,32 @@ def main():
     # 提取目标函数数据
     obj_by_gen = extract_objectives_by_generation(history_data, generations)
 
+    # 提取约束违反值数据
+    con_by_gen = extract_constraints_by_generation(history_data, generations)
+
     # 打印统计信息
     print_statistics(obj_by_gen, generations)
 
     # 创建可视化图表
-    fig = create_comparison_plots(obj_by_gen, generations)
+    fig = create_comparison_plots(obj_by_gen, con_by_gen, generations)
 
     # 显示图表
+    plt.show(block=True)
+
+    # 创建3D可视化图表
+    fig_3d = create_3d_plot(obj_by_gen, generations)
+
+    # 显示3D图表
     plt.show(block=True)
 
     print("\n可视化完成！")
     print("图表说明：")
     print("1. 左上：第一代和最后一代的第1、2目标函数值对比")
     print("2. 右上：第一代和最后一代的第1、3目标函数值对比")
-    print("3. 左下：第一代和最后一代的第2、3目标函数值对比")
-    print("4. 右下：三个目标函数值随代数变化的平均值趋势")
+    print("3. 中左：第一代和最后一代的第2、3目标函数值对比")
+    print("4. 中右：三个目标函数值随代数变化的平均值趋势")
+    print("5. 左下：三个约束违反值随代数变化的平均值趋势")
+    print("6. 新窗口：第1代和最后一代的3D目标函数分布（散点 + 凸包表面）")
 
 if __name__ == "__main__":
     main()
