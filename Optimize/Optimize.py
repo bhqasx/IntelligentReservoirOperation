@@ -369,6 +369,12 @@ def convert_numpy_to_list(obj):
         return {key: convert_numpy_to_list(value) for key, value in obj.items()}
     elif isinstance(obj, list):
         return [convert_numpy_to_list(item) for item in obj]
+    elif isinstance(obj, (np.integer, np.int64)):
+        return int(obj)
+    elif isinstance(obj, (np.floating, np.float64)):
+        return float(obj)
+    elif isinstance(obj, np.bool_):
+        return bool(obj)
     else:
         return obj
 
@@ -540,7 +546,7 @@ elif StartMode == 3:
     print(f"已从第 {generation} 代加载数据，将从第 {generation + 1} 代开始优化。")
 
 # 定义可执行文件所在的目录，此路径对所有模式都必要
-exe_directory = r"D:\服务器计算结果\2R20_14_server\1D_RiverNet_OCTC"  # 替换为你exe文件所在的目录
+exe_directory = r"D:\服务器计算结果\2R20_15_server\1D_RiverNet_OCTC"  # 替换为你exe文件所在的目录
 
 # 仅当不是从历史记录恢复时，才运行初始模拟
 if StartMode != 3:
@@ -828,7 +834,7 @@ while generation <= max_gen:
         'P_plans_XLD': P_plans_XLD,
         'obj': convert_numpy_to_list(obj),
         'ConstraintViolation': convert_numpy_to_list(ConstraintViolation),
-        'pareto_ranks': pareto_ranks  # 添加帕累托前沿等级记录
+        'pareto_ranks': convert_numpy_to_list(pareto_ranks)  # 添加帕累托前沿等级记录
     }
     history_data['generations'][str(generation)] = generation_data
     

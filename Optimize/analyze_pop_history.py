@@ -10,6 +10,7 @@ PopHistory.json 数据分析和可视化工具
 """
 
 import json
+import os
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib
@@ -17,6 +18,8 @@ matplotlib.use('TkAgg')  # 使用支持交互的后端
 from mpl_toolkits.mplot3d import Axes3D
 import mplcursors
 from scipy.spatial import ConvexHull
+import tkinter as tk
+from tkinter import filedialog
 
 def load_pop_history(filename='PopHistory.json'):
     """
@@ -29,8 +32,25 @@ def load_pop_history(filename='PopHistory.json'):
     history_data: 包含所有代数数据的字典
     generations: 代数列表（排序后的）
     """
+    target_path = filename
+    while True:
+        answer = input("PopHistory.json 是否在当前目录？(Y/N): ").strip().lower()
+        if answer in ('y', ''):
+            break
+        if answer == 'n':
+            root = tk.Tk()
+            root.withdraw()
+            selected_dir = filedialog.askdirectory(title='选择包含 PopHistory.json 的目录')
+            root.destroy()
+            if not selected_dir:
+                print("错误：未选择目录")
+                return None, None
+            target_path = os.path.join(selected_dir, filename)
+            break
+        print("请输入 Y 或 N。")
+
     try:
-        with open(filename, 'r', encoding='utf-8') as f:
+        with open(target_path, 'r', encoding='utf-8') as f:
             history_data = json.load(f)
 
         # 获取所有代数并排序
@@ -44,7 +64,7 @@ def load_pop_history(filename='PopHistory.json'):
         return history_data, generations
 
     except FileNotFoundError:
-        print(f"错误：找不到文件 {filename}")
+        print(f"错误：找不到文件 {target_path}")
         return None, None
     except json.JSONDecodeError as e:
         print(f"错误：JSON文件格式错误 - {e}")
