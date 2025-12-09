@@ -40,12 +40,22 @@ def load_pop_history(filename='PopHistory.json'):
         if answer == 'n':
             root = tk.Tk()
             root.withdraw()
-            selected_dir = filedialog.askdirectory(title='选择包含 PopHistory.json 的目录')
+            root.attributes('-topmost', True)
+            root.update()
+            selected_dir = filedialog.askdirectory(
+                parent=root,
+                title='选择包含 PopHistory.json 的目录',
+                initialdir=os.getcwd()
+            )
             root.destroy()
             if not selected_dir:
-                print("错误：未选择目录")
-                return None, None
-            target_path = os.path.join(selected_dir, filename)
+                manual_dir = input("未选择目录，请手动输入包含 PopHistory.json 的目录: ").strip()
+                if not manual_dir:
+                    print("错误：未选择目录")
+                    return None, None
+                target_path = os.path.join(manual_dir, filename)
+            else:
+                target_path = os.path.join(selected_dir, filename)
             break
         print("请输入 Y 或 N。")
 
@@ -257,7 +267,7 @@ def create_comparison_plots(obj_by_gen, con_by_gen, generations):
     con_means = np.mean(con_by_gen, axis=1)  # 计算每一代的约束违反值平均值
 
     # 绘制三个约束违反值
-    colors = ['purple', 'orange', 'brown']
+    colors = ['blue', 'orange', 'brown']
     labels = ['约束1违反值', '约束2违反值', '约束3违反值']
     for i in range(3):
         ax5.plot(generations, con_means[:, i], color=colors[i], linewidth=2,
@@ -296,25 +306,83 @@ def create_3d_plot(obj_by_gen, generations):
     ax.scatter(last_gen_data[:, 0], last_gen_data[:, 1], last_gen_data[:, 2], 
                c='red', alpha=0.7, label=f'第{generations[-1]}代')
 
-    # 计算并绘制第一代的凸包表面
-    hull1 = ConvexHull(first_gen_data)
-    ax.plot_trisurf(first_gen_data[:, 0], first_gen_data[:, 1], first_gen_data[:, 2], 
+    ys_create_surf=0
+    if ys_create_surf:
+        # 计算并绘制第一代的凸包表面
+        hull1 = ConvexHull(first_gen_data)
+        ax.plot_trisurf(first_gen_data[:, 0], first_gen_data[:, 1], first_gen_data[:, 2], 
                     triangles=hull1.simplices, color='blue', alpha=0.3)
 
-    # 计算并绘制最后一代的凸包表面
-    hull2 = ConvexHull(last_gen_data)
-    ax.plot_trisurf(last_gen_data[:, 0], last_gen_data[:, 1], last_gen_data[:, 2], 
-                    triangles=hull2.simplices, color='red', alpha=0.3)
+        # 计算并绘制最后一代的凸包表面
+        hull2 = ConvexHull(last_gen_data)
+        ax.plot_trisurf(last_gen_data[:, 0], last_gen_data[:, 1], last_gen_data[:, 2], 
+                        triangles=hull2.simplices, color='red', alpha=0.3)
 
     ax.set_xlabel('目标函数1 (-SMX QsDiff)')
     ax.set_ylabel('目标函数2 (-XLD QsDiff)')
     ax.set_zlabel('目标函数3 (Flood Obj)')
     ax.set_title('第1代和最后一代3D目标函数分布')
-    ax.legend()
+    legend = ax.legend()
+    if legend:
+        legend.set_draggable(True)
 
     return fig
 
-def print_statistics(obj_by_gen, generations):
+def create_3d_layers(obj_by_gen, generations, history_data):
+    """
+    根据指定代数，将同一帕累托分层的解在3D空间用折线连起来
+    """
+    gen_input = input("请输入要绘制3D分层连线的代数（直接回车跳过）: ").strip()
+    if not gen_input:
+        print("已跳过3D分层连线绘制。")
+        return
+    try:
+        gen = int(gen_input)
+    except ValueError:
+        print("输入的代数无效，已跳过绘制。")
+        return
+    if gen not in generations:
+        print(f"代数 {gen} 不在数据范围内，已跳过绘制。")
+        return
+
+    gen_idx = generations.index(gen)
+    ranks = history_data['generations'][str(gen)].get('pareto_ranks', [])
+    if not ranks:
+        print(f"第{gen}代缺少帕累托分层信息，无法绘制。")
+        return
+    if len(ranks) != len(obj_by_gen[gen_idx]):
+        print(f"第{gen}代的分层数量与个体数不匹配，无法绘制。")
+        return
+
+    data = obj_by_gen[gen_idx]
+    rank_to_indices = {}
+    for idx, rank in enumerate(ranks):
+        rank_to_indices.setdefault(rank, []).append(idx)
+
+    fig = plt.figure(figsize=(10, 8))
+    ax = fig.add_subplot(111, projection='3d')
+    cmap = plt.cm.get_cmap('tab10', len(rank_to_indices))
+
+    ax.scatter(data[:, 0], data[:, 1], data[:, 2],
+               c='lightgray', alpha=0.5, label='个体')
+
+    for line_idx, (rank, indices) in enumerate(sorted(rank_to_indices.items())):
+        ordered = sorted(indices, key=lambda i: data[i, 0])
+        coords = data[ordered]
+        ax.plot(coords[:, 0], coords[:, 1], coords[:, 2],
+                color=cmap(line_idx), linewidth=2, marker='o',
+                label=f'Rank {rank}')
+
+    ax.set_xlabel('目标函数1 (-SMX QsDiff)')
+    ax.set_ylabel('目标函数2 (-XLD QsDiff)')
+    ax.set_zlabel('目标函数3 (Flood Obj)')
+    ax.set_title(f'第{gen}代帕累托分层连线图')
+    legend = ax.legend()
+    if legend:
+        legend.set_draggable(True)
+    plt.show(block=True)
+
+def print_statistics(obj_by_gen, generations, history_data):
     """
     打印统计信息
 
@@ -348,6 +416,24 @@ def print_statistics(obj_by_gen, generations):
         trend = "改善" if abs(improvement) > 1e-6 else "基本稳定"
         print(f"目标函数{i+1}: {improvement:+.6f} ({trend})")
 
+    print("\n帕累托分层变化：")
+    prev_layers = None
+    changes = []
+    for gen in generations:
+        ranks = history_data['generations'][str(gen)].get('pareto_ranks', [])
+        layer_count = len(set(ranks)) if ranks else 0
+        if prev_layers is None:
+            prev_layers = layer_count
+            continue
+        if layer_count != prev_layers:
+            changes.append((gen, layer_count))
+            prev_layers = layer_count
+    if changes:
+        for gen, count in changes:
+            print(f"第{gen}代：分层数量 = {count}")
+    else:
+        print("各代帕累托分层数量保持不变。")
+
 def main():
     """
     主函数
@@ -365,7 +451,7 @@ def main():
     con_by_gen = extract_constraints_by_generation(history_data, generations)
 
     # 打印统计信息
-    print_statistics(obj_by_gen, generations)
+    print_statistics(obj_by_gen, generations, history_data)
 
     # 创建可视化图表
     fig = create_comparison_plots(obj_by_gen, con_by_gen, generations)
@@ -375,9 +461,9 @@ def main():
 
     # 创建3D可视化图表
     fig_3d = create_3d_plot(obj_by_gen, generations)
-
-    # 显示3D图表
     plt.show(block=True)
+
+    create_3d_layers(obj_by_gen, generations, history_data)
 
     print("\n可视化完成！")
     print("图表说明：")
@@ -387,6 +473,7 @@ def main():
     print("4. 中右：三个目标函数值随代数变化的平均值趋势")
     print("5. 左下：三个约束违反值随代数变化的平均值趋势")
     print("6. 新窗口：第1代和最后一代的3D目标函数分布（散点 + 凸包表面）")
+    print("7. 新窗口：指定代数帕累托分层连线图（可选）")
 
 if __name__ == "__main__":
     main()
