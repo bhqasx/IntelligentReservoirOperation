@@ -546,7 +546,7 @@ elif StartMode == 3:
     print(f"已从第 {generation} 代加载数据，将从第 {generation + 1} 代开始优化。")
 
 # 定义可执行文件所在的目录，此路径对所有模式都必要
-exe_directory = r"D:\服务器计算结果\2R20_15_server\1D_RiverNet_OCTC"  # 替换为你exe文件所在的目录
+exe_directory = r"D:\服务器计算结果\2R20_16_server\1D_RiverNet_OCTC"  # 替换为你exe文件所在的目录
 
 # 仅当不是从历史记录恢复时，才运行初始模拟
 if StartMode != 3:

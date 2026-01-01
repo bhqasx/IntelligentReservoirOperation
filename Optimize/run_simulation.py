@@ -228,11 +228,23 @@ def run_all_simulations(planNum, exe_directory=None, test=False):
     
     with ThreadPoolExecutor() as executor:
         futures = [executor.submit(run_simulation, arg, exe_directory, test) for arg in arguments]
-        for i, future in enumerate(as_completed(futures)):
+        # 修改这里：去掉 as_completed，直接遍历 futures
+        # 这样 i=0 时对应 case1 的 future，i=1 时对应 case2 的 future...
+        # future.result() 会阻塞直到该特定任务完成
+        for i, future in enumerate(futures):
             print(future.result())
             # 在每个模拟完成后评估结果
             case_number = i + 1
-            case_status[i] = evaluate_case(case_number, exe_directory)
+            
+            # --- 建议修改开始：增加异常捕获和暂停 ---
+            try:
+                case_status[i] = evaluate_case(case_number, exe_directory)
+            except Exception as e:
+                print(f"Error evaluating case {case_number}: {e}")
+                print(">>> 发生错误，程序已暂停。请检查报错信息和对应的 Case 文件夹。")
+                input(">>> 按回车键(Enter)继续...")
+                case_status[i] = 0  # 标记该 case 失败
+            # --- 建议修改结束 ---
 
     if not test:
         print("Case evaluation results:", case_status)
