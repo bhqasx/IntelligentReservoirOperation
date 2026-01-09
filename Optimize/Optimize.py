@@ -618,21 +618,25 @@ for i in range(planNum):
     except (KeyError, IndexError):
         obj[i, 2] = np.nan
 
-    # 三门峡是等式约束
-    ConstraintViolation[i, 0] = abs(case[i+1][1]["Zend_lastCS"]/SMX_HyperPara['WlFldContr']-1)
-    # 小浪底是不等式约束
-    Zend_XLD = case[i+1][2]["Zend_lastCS"]
-    VolEnd_XLD = interpolate(Zend_XLD, XLD_CapCurve['WL'], XLD_CapCurve['Vol'])
-    ConstraintViolation[i, 1] = VolEnd_XLD/XLD_HyperPara['volWatSupply']-1
-    if ConstraintViolation[i, 1] > 0:
-        ConstraintViolation[i, 1] = 0
-    else:
-        ConstraintViolation[i,1]=-ConstraintViolation[i,1]
-
     if case_status[i] == 0:
         ConstraintViolation[i, 2] = 1
+        ConstraintViolation[i, 0] = 1
+        ConstraintViolation[i, 1] = 1
     else:
         ConstraintViolation[i, 2] = 0
+    
+        # 三门峡是等式约束
+        ConstraintViolation[i, 0] = abs(case[i+1][1]["Zend_lastCS"]/SMX_HyperPara['WlFldContr']-1)
+        # 小浪底是不等式约束
+        Zend_XLD = case[i+1][2]["Zend_lastCS"]
+        VolEnd_XLD = interpolate(Zend_XLD, XLD_CapCurve['WL'], XLD_CapCurve['Vol'])
+        ConstraintViolation[i, 1] = VolEnd_XLD/XLD_HyperPara['volWatSupply']-1
+        if ConstraintViolation[i, 1] > 0:
+            ConstraintViolation[i, 1] = 0
+        else:
+            ConstraintViolation[i,1]=-ConstraintViolation[i,1]
+
+
 
 P_plans_SMX = SMX_Plan
 P_plans_XLD = XLD_Plan
@@ -710,21 +714,23 @@ while generation <= max_gen:
         except (KeyError, IndexError):
             Q_obj[i, 2] = np.nan
 
-        # 三门峡是等式约束
-        Q_ConstraintViolation[i, 0] = abs(case[i+1][1]["Zend_lastCS"]/SMX_HyperPara['WlFldContr']-1)
-        # 小浪底是不等式约束
-        Zend_XLD = case[i+1][2]["Zend_lastCS"]
-        VolEnd_XLD = interpolate(Zend_XLD, XLD_CapCurve['WL'], XLD_CapCurve['Vol'])
-        Q_ConstraintViolation[i, 1] = VolEnd_XLD/XLD_HyperPara['volWatSupply']-1
-        if Q_ConstraintViolation[i, 1] > 0:
-            Q_ConstraintViolation[i, 1] = 0
-        else:
-            Q_ConstraintViolation[i,1]=-Q_ConstraintViolation[i,1]
-
         if case_status[i] == 0:
             Q_ConstraintViolation[i, 2] = 1
+            Q_ConstraintViolation[i, 0] = 1
+            Q_ConstraintViolation[i, 1] = 1
         else:
             Q_ConstraintViolation[i, 2] = 0
+        
+            # 三门峡是等式约束
+            Q_ConstraintViolation[i, 0] = abs(case[i+1][1]["Zend_lastCS"]/SMX_HyperPara['WlFldContr']-1)
+            # 小浪底是不等式约束
+            Zend_XLD = case[i+1][2]["Zend_lastCS"]
+            VolEnd_XLD = interpolate(Zend_XLD, XLD_CapCurve['WL'], XLD_CapCurve['Vol'])
+            Q_ConstraintViolation[i, 1] = VolEnd_XLD/XLD_HyperPara['volWatSupply']-1
+            if Q_ConstraintViolation[i, 1] > 0:
+                Q_ConstraintViolation[i, 1] = 0
+            else:
+                Q_ConstraintViolation[i,1]=-Q_ConstraintViolation[i,1]
 
     # 合并父代和子代
     R_plans_SMX = P_plans_SMX + Q_plans_SMX

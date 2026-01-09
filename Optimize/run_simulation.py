@@ -57,6 +57,15 @@ def evaluate_case(case_number, exe_directory):
     """评估单个case的结果，返回评估分数"""
     case_dir = os.path.join(exe_directory, f"case{case_number}")
     out_dir = os.path.join(case_dir, "Output")
+
+    # 检查是否模拟完成
+    result_path = os.path.join(out_dir, "TimeSM.TXT")
+    # 读取第一行，检查是不是"ok"
+    with open(result_path, 'r') as f:
+        first_line = f.readline().strip()
+        if first_line != "ok":
+            return 0
+
     #检查out_dir下有几个格式为"Reach  x"的文件夹
     reach_dirs = [d for d in os.listdir(out_dir) if d.startswith("Reach")]
     reach_num = len(reach_dirs)
@@ -138,9 +147,13 @@ def evaluate_case(case_number, exe_directory):
             # 将列表转换为NumPy数组
             case[case_number][iReach]["Qout"] = np.array(qin_values)
             case[case_number][iReach]["SusOut"] = np.array(sus_values)
+            
             # 将z_values最后一个值存储
-            case[case_number][iReach]["Zend_lastCS"] = z_values[-1]
-        
+            if z_values:
+                case[case_number][iReach]["Zend_lastCS"] = z_values[-1]
+            else:
+                print(f"警告: case{case_number} 的 FlowCS {flowcs_num}.txt 中未读取到有效 z_values 数据")
+                return 0
         # 计算入库沙量
         qs_in = case[case_number][iReach]["Qin"] * case[case_number][iReach]["SusIn"]
         try:
@@ -181,14 +194,6 @@ def evaluate_case(case_number, exe_directory):
                 case[case_number][iReach]["Obj_flood"] = float(lines[3].strip())
             else:
                 case[case_number][iReach]["Obj_flood"] = 0
-
-    # 检查是否模拟完成
-    result_path = os.path.join(out_dir, "TimeSM.TXT")
-    # 读取第一行，检查是不是"ok"
-    with open(result_path, 'r') as f:
-        first_line = f.readline().strip()
-        if first_line != "ok":
-            return 0
     return 1
 
 
