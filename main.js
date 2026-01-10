@@ -247,85 +247,100 @@ function CalculateRefillT(volChange, tt, qq, ttNat, qqNat, tCtrl, qCtrl) {
   return t;
 }
 
+let projectFolder = "";
+const withProjectPath = (p) => projectFolder + p;
+
+// 新增：用于真正写入用户选择的目录（Chrome/Edge）
+let saveDirHandle = null;
+
 window.onload = function() {
-//弹出一个提示框
-alert('这是第2版');
+  //弹出一个提示框
+  //alert('这是第2版');
+  
+  // 提示用户选择项目文件夹（赋值给顶层变量，避免作用域断开）
+  /** @type {string} */
+  projectFolder = (typeof prompt === 'function'
+    ? prompt("请输入项目文件夹路径 (例如: Optimize/, 留空则默认为当前目录):", "")
+    : ""
+  ) ?? "";
 
+  projectFolder = String(projectFolder).trim().replace(/\\/g, "/");
+  if (projectFolder !== "" && !projectFolder.endsWith("/")) projectFolder += "/";
 
-// Fetch the JSON data for Xiaolangdi
-fetch('Xiaolangdi.json')
-  .then(response => response.json())
-  .then(data => {
-    XLD = data;
-    // Get the first chart area
-    var ctx = document.getElementById('chartArea1').getContext('2d');
+  // Fetch the JSON data for Xiaolangdi
+  fetch(withProjectPath('Xiaolangdi.json'))
+    .then(response => response.json())
+    .then(data => {
+      XLD = data;
+      // Get the first chart area
+      var ctx = document.getElementById('chartArea1').getContext('2d');
 
-    // Create the chart
-    chart1 = new Chart(ctx, {
-      type: 'line',
-      data: {
-        labels: XLD.t,
-        datasets: [
-          {
-            label: 'Inflow',
-            data: XLD.Inflow,
-            yAxisID: 'yAxis1',
-          },
-          {
-            label: 'Outflow',
-            data: XLD.Outflow,
-            yAxisID: 'yAxis1',
-          },
-          {
-            label: 'Water Level',
-            data: XLD["WaterLevel"],
-            yAxisID: 'yAxis2',
-          }
-        ]
-      },
-      options: {
-        responsive: true,
-        scales: {
-          x: {
-            type: 'linear',
-            position: 'bottom',
-            title: {
-              display: true,
-              text: 't(h)'
+      // Create the chart
+      chart1 = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: XLD.t,
+          datasets: [
+            {
+              label: 'Inflow',
+              data: XLD.Inflow,
+              yAxisID: 'yAxis1',
             },
-            grid: {
-              drawOnChartArea: false,
-            },            
-          },
-          yAxis1: {
-            type: 'linear',
-            position: 'left',
-            title: {
-              display: true,
-              text: '流量(m³/s)'
+            {
+              label: 'Outflow',
+              data: XLD.Outflow,
+              yAxisID: 'yAxis1',
             },
-            grid: {
-              drawOnChartArea: false,
-            },            
-          },
-          yAxis2: {
-            type: 'linear',
-            position: 'right',
-            title: {
-              display: true,
-              text: '水位(m)'
+            {
+              label: 'Water Level',
+              data: XLD["WaterLevel"],
+              yAxisID: 'yAxis2',
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          scales: {
+            x: {
+              type: 'linear',
+              position: 'bottom',
+              title: {
+                display: true,
+                text: 't(h)'
+              },
+              grid: {
+                drawOnChartArea: false,
+              },            
             },
-            grid: {
-              drawOnChartArea: false,
-            },            
+            yAxis1: {
+              type: 'linear',
+              position: 'left',
+              title: {
+                display: true,
+                text: '流量(m³/s)'
+              },
+              grid: {
+                drawOnChartArea: false,
+              },            
+            },
+            yAxis2: {
+              type: 'linear',
+              position: 'right',
+              title: {
+                display: true,
+                text: '水位(m)'
+              },
+              grid: {
+                drawOnChartArea: false,
+              },            
+            }
           }
         }
-      }
+      });
     });
-  });
   
   // Fetch the JSON data for Sanmenxia
-  fetch('Sanmenxia.json')
+  fetch(withProjectPath('Sanmenxia.json'))
     .then(response => response.json())
     .then(data => {
       SMX = data;
@@ -657,35 +672,57 @@ fetch('Xiaolangdi.json')
       inputsQ[9].style.borderColor = 'red';
     }
   });
-}
-    
+}; // <- 补上 window.onload 的收尾
+
 //保存按钮
-  document.getElementById('save').addEventListener('click', function () {
-    var XLD_keypoints = {
-      t: XLD_t,
-      q: XLD_q,
-      WlFldContr: Number(WlFldContr_XLD),
-      WlReg: Number(WlReg_XLD),
-      volWatSupply: Number(volWatSupply)
-    };
-    var SMX_keypoints = {
-      t: SMX_t,
-      q: SMX_q,
-      WlFldContr: Number(document.getElementById('WL-FloodControl-SMX').value)
-    };
+document.getElementById('save').addEventListener('click', async function () {
+  const XLD_keypoints = {
+    t: XLD_t,
+    q: XLD_q,
+    WlFldContr: Number(WlFldContr_XLD),
+    WlReg: Number(WlReg_XLD),
+    volWatSupply: Number(volWatSupply)
+  };
+  const SMX_keypoints = {
+    t: SMX_t,
+    q: SMX_q,
+    WlFldContr: Number(document.getElementById('WL-FloodControl-SMX').value)
+  };
 
-    saveToFile(XLD_keypoints, 'XLD_keypoints.json');
-    saveToFile(SMX_keypoints, 'SMX_keypoints.json');
-  });
+  // 注意：浏览器无法按“路径”保存；这里用固定文件名
+  await saveToFile(XLD_keypoints, 'XLD_keypoints.json');
+  await saveToFile(SMX_keypoints, 'SMX_keypoints.json');
+});
 
-  function saveToFile(data, filename) {
-    var blob = new Blob([JSON.stringify(data)], { type: 'application/json' });
-    var url = URL.createObjectURL(blob);
-    var a = document.createElement('a');
-    a.href = url;
-    a.download = filename;
-    a.click();
+async function saveToFile(data, filename) {
+  const json = JSON.stringify(data);
+
+  // 优先：File System Access API（可写入用户选择的目录）
+  if (typeof window.showDirectoryPicker === 'function') {
+    try {
+      if (!saveDirHandle) {
+        saveDirHandle = await window.showDirectoryPicker({ mode: 'readwrite' });
+      }
+      const fileHandle = await saveDirHandle.getFileHandle(filename, { create: true });
+      const writable = await fileHandle.createWritable();
+      await writable.write(json);
+      await writable.close();
+      return;
+    } catch (e) {
+      // 用户取消/无权限/不支持写入 => 回退到普通下载
+      // 可按需：console.warn(e);
+    }
   }
+
+  // 回退：普通下载（进默认“下载”目录）
+  const blob = new Blob([json], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename; // 只能是文件名，不能控制保存目录
+  a.click();
+  URL.revokeObjectURL(url);
+}
 
 //绘制调控过程线
 document.getElementById('plot').addEventListener('click', function () {

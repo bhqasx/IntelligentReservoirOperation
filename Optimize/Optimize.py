@@ -13,10 +13,25 @@ from nsga3_utils import (
     generate_offspring,
     niching_selection
 )
+import tkinter as tk
+from tkinter import filedialog
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 import matplotlib
 matplotlib.use('TkAgg')  # 使用支持交互的后端
+
+# 选择初始方案文件夹
+root = tk.Tk()
+root.withdraw()
+print("请选择初始方案文件夹...")
+initial_plan_folder = filedialog.askdirectory(title="请选择初始方案文件夹")
+root.destroy()
+
+if not initial_plan_folder:
+    print("未选择初始方案文件夹，将使用当前工作目录。")
+    initial_plan_folder = os.getcwd() 
+else:
+    print(f"初始方案文件夹: {initial_plan_folder}")
 
 global SMX_t_in, SMX_q_in, SMX_HyperPara, SMX_CapCurve, iniVol_SMX
 
@@ -245,9 +260,14 @@ def update_plot(fig, ax1, ax2, obj, constraint_violation, generation):
     fig.canvas.draw_idle()  # 使用非阻塞绘制
     fig.canvas.flush_events()  # 刷新事件队列，确保GUI响应
 
-# 读取文件XLD_keypoints.json和SMX_keypoints.json，如果这两个文件不在当前目录下，则从上一级目录中寻找
+# 读取文件XLD_keypoints.json和SMX_keypoints.json，如果这两个文件不initial_plan_folder或当前目录下，则从上一级目录中寻找
 # 找到后，将数据分别存入XLD_KeyP和SMX_KeyP
 def find_file(filename):
+    # Check initial_plan_folder first
+    file_path = os.path.join(initial_plan_folder, filename)
+    if os.path.isfile(file_path):
+        return file_path
+
     # Check current directory
     if os.path.isfile(filename):
         return filename
@@ -256,7 +276,7 @@ def find_file(filename):
     parent_file = os.path.join(parent_dir, filename)
     if os.path.isfile(parent_file):
         return parent_file
-    raise FileNotFoundError(f"Could not find {filename} in current or parent directory")
+    raise FileNotFoundError(f"Could not find {filename} in {initial_plan_folder}, current or parent directory")
 
 # 读取XLD_keypoints.json和SMX_keypoints.json
 try:
@@ -478,9 +498,9 @@ def generate_ini_plans():
     save_initial_plan = input("是否保存初始方案？(y/n)")
     if save_initial_plan == 'y':
         # 将XLD_Plan和SMX_Plan保存为json文件
-        with open('XLD_Plan.json', 'w') as f:
+        with open(os.path.join(initial_plan_folder, 'XLD_Plan.json'), 'w') as f:
             json.dump(XLD_Plan, f, indent=2)
-        with open('SMX_Plan.json', 'w') as f:
+        with open(os.path.join(initial_plan_folder, 'SMX_Plan.json'), 'w') as f:
             json.dump(SMX_Plan, f, indent=2)    
 
     # 在返回前赋值给全局变量
@@ -517,15 +537,15 @@ except FileNotFoundError as e:
 except json.JSONDecodeError as e:
     print(f"Error decoding JSON: {e}")
 
-StartMode = 2 # 1: 生成初始方案，2: 从初始方案文件中读取初始方案, 3: 从PopHistory.json中读取初始方案
+StartMode = 1 # 1: 生成初始方案，2: 从初始方案文件中读取初始方案, 3: 从PopHistory.json中读取初始方案
 if StartMode == 1:
     # 调用函数生成初始方案
     XLD_Plan, SMX_Plan, iniVol_XLD, iniVol_SMX, planNum = generate_ini_plans()
 elif StartMode == 2:
     # 从文件中读取初始方案
-    with open('XLD_Plan.json', 'r') as f:
+    with open(os.path.join(initial_plan_folder, 'XLD_Plan.json'), 'r') as f:
         XLD_Plan = json.load(f)
-    with open('SMX_Plan.json', 'r') as f:
+    with open(os.path.join(initial_plan_folder, 'SMX_Plan.json'), 'r') as f:
         SMX_Plan = json.load(f)
     planNum = len(XLD_Plan)
 elif StartMode == 3:
