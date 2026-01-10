@@ -451,6 +451,10 @@ window.onload = function() {
     //console.log('Q values for table ' + (t + 1) + ':', tables[t] === 'table1' ? XLD_q : SMX_q);
   }
   
+  //html中的元素"WL-Initial"和"WL-Initial-SMX"设置冻结状态
+  document.getElementById('WL-Initial').disabled = true;
+  document.getElementById('WL-Initial-SMX').disabled = true;
+
   var table = document.getElementsByClassName('table1')[0];
   var inputsQ = table.getElementsByClassName('input-q');
   var inputsT = table.getElementsByClassName('input-t');
@@ -468,6 +472,23 @@ window.onload = function() {
       inputsT[0].style.borderColor = '';
       //令inputsQ[0]的文本框边框颜色变为红色
       inputsQ[0].style.borderColor = 'red';
+
+      //解除html中元素"WL-Initial"和"WL-Initial-SMX"的冻结状态
+      document.getElementById('WL-Initial').disabled = false;
+      document.getElementById('WL-Initial-SMX').disabled = false;
+
+      //从XLD.t和XLD["WaterLevel"]序列中，插值得到this.value时刻的水位值，赋值给id为"WL-Initial"的输入框
+      var t_input = Number(this.value);
+      var t_array = XLD.t;
+      var wl_array = XLD["WaterLevel"];
+      var wl_initial = interpolate(t_array, wl_array, t_input);
+      document.getElementById('WL-Initial').value = wl_initial.toFixed(2);
+
+      //从SMX.t和SMX["WaterLevel"]序列中，插值得到this.value时刻的水位值，赋值给id为"WL-Initial-SMX"的输入框
+      t_array = SMX.t;
+      wl_array = SMX["WaterLevel"];
+      wl_initial = interpolate(t_array, wl_array, t_input);
+      document.getElementById('WL-Initial-SMX').value = wl_initial.toFixed(2);
     }
   });
   //令table1的第二行的Q和第一行的Q相等，这两个单元格显示的值也相同
