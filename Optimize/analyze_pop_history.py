@@ -382,6 +382,91 @@ def create_3d_layers(obj_by_gen, generations, history_data):
         legend.set_draggable(True)
     plt.show(block=True)
 
+def plot_gene_evolution(history_data, generations):
+    """
+    绘制某个基因在所有代数中的演化过程
+
+    Parameters:
+    history_data: 历史数据字典
+    generations: 代数列表
+    """
+    # 询问用户选择SMX还是XLD
+    while True:
+        reservoir_input = input("请选择观察哪个水库的基因？(1=SMX, 2=XLD，直接回车跳过): ").strip()
+        if reservoir_input == '':
+            print("已跳过基因演化图绘制。")
+            return
+        if reservoir_input in ('1', '2'):
+            break
+        print("请输入 1 或 2。")
+    
+    reservoir_key = 'P_plans_SMX' if reservoir_input == '1' else 'P_plans_XLD'
+    reservoir_name = 'SMX' if reservoir_input == '1' else 'XLD'
+    
+    # 询问用户选择t序列还是q序列
+    while True:
+        seq_input = input("请选择观察 t 序列还是 q 序列？(t/q): ").strip().lower()
+        if seq_input in ('t', 'q'):
+            break
+        print("请输入 t 或 q。")
+    
+    # 获取基因序列长度
+    first_gen_data = history_data['generations'][str(generations[0])]
+    sample_seq = first_gen_data[reservoir_key][0][seq_input]
+    seq_length = len(sample_seq)
+    
+    # 询问用户选择基因索引
+    while True:
+        idx_input = input(f"请输入要观察的基因索引 (0 ~ {seq_length - 1}): ").strip()
+        try:
+            gene_idx = int(idx_input)
+            if 0 <= gene_idx < seq_length:
+                break
+            print(f"索引超出范围，请输入 0 ~ {seq_length - 1} 之间的整数。")
+        except ValueError:
+            print("请输入有效的整数。")
+    
+    # 提取每代所有个体的指定基因值
+    all_gen_values = []
+    all_gen_indices = []
+    
+    for gen in generations:
+        gen_data = history_data['generations'][str(gen)]
+        plans = gen_data[reservoir_key]
+        for ind_idx, plan in enumerate(plans):
+            gene_value = plan[seq_input][gene_idx]
+            all_gen_values.append(gene_value)
+            all_gen_indices.append(gen)
+    
+    # 绘制散点图
+    fig, ax = plt.subplots(figsize=(12, 6))
+    
+    ax.scatter(all_gen_indices, all_gen_values, c='blue', alpha=0.3, s=10)
+    
+    # 计算每代的平均值并绘制折线
+    gen_means = []
+    for gen in generations:
+        gen_data = history_data['generations'][str(gen)]
+        plans = gen_data[reservoir_key]
+        values = [plan[seq_input][gene_idx] for plan in plans]
+        gen_means.append(np.mean(values))
+    
+    ax.plot(generations, gen_means, color='red', linewidth=2, marker='o', markersize=4, label='平均值')
+    
+    ax.set_xlabel('代数')
+    ax.set_ylabel(f'{reservoir_name} {seq_input}[{gene_idx}] 值')
+    ax.set_title(f'{reservoir_name} 水库 {seq_input}[{gene_idx}] 基因演化过程')
+    ax.legend()
+    ax.grid(True, alpha=0.3)
+    
+    plt.tight_layout()
+    plt.show(block=True)
+    
+    print(f"\n{reservoir_name} {seq_input}[{gene_idx}] 基因演化统计：")
+    print(f"  第一代平均值: {gen_means[0]:.6f}")
+    print(f"  最后一代平均值: {gen_means[-1]:.6f}")
+    print(f"  变化量: {gen_means[-1] - gen_means[0]:+.6f}")
+
 def print_statistics(obj_by_gen, generations, history_data):
     """
     打印统计信息
@@ -524,6 +609,9 @@ def main():
 
     create_3d_layers(obj_by_gen, generations, history_data)
 
+    # 绘制基因演化过程
+    plot_gene_evolution(history_data, generations)
+
     print("\n可视化完成！")
     print("图表说明：")
     print("1. 左上：第一代和最后一代的第1、2目标函数值对比")
@@ -533,6 +621,7 @@ def main():
     print("5. 左下：三个约束违反值随代数变化的平均值趋势")
     print("6. 新窗口：第1代和最后一代的3D目标函数分布（散点 + 凸包表面）")
     print("7. 新窗口：指定代数帕累托分层连线图（可选）")
+    print("8. 新窗口：基因演化过程图（可选）")
 
 if __name__ == "__main__":
     main()
