@@ -410,6 +410,65 @@ def print_statistics(obj_by_gen, generations, history_data):
               f"最小值={np.min(last_gen_data[:, i]):.6f}, "
               f"最大值={np.max(last_gen_data[:, i]):.6f}")
 
+    # 查找所有代数中各目标函数最小的个体
+    print("\n" + "-"*60)
+    print("各目标函数全局最优个体：")
+    print("-"*60)
+    
+    # 初始化最小值记录
+    min_obj1 = {'value': np.inf, 'gen': None, 'idx': None, 'objectives': None}
+    min_obj2 = {'value': np.inf, 'gen': None, 'idx': None, 'objectives': None}
+    min_obj3 = {'value': np.inf, 'gen': None, 'idx': None, 'objectives': None}
+    
+    # 遍历所有代数和个体
+    for gen_idx, gen in enumerate(generations):
+        gen_data = obj_by_gen[gen_idx]
+        for ind_idx in range(gen_data.shape[0]):
+            objectives = gen_data[ind_idx]
+            
+            # 检查是否包含NaN值，跳过无效个体
+            if np.any(np.isnan(objectives)):
+                continue
+            
+            # 检查目标函数1
+            if objectives[0] < min_obj1['value']:
+                min_obj1['value'] = objectives[0]
+                min_obj1['gen'] = gen
+                min_obj1['idx'] = ind_idx
+                min_obj1['objectives'] = objectives.copy()
+            
+            # 检查目标函数2
+            if objectives[1] < min_obj2['value']:
+                min_obj2['value'] = objectives[1]
+                min_obj2['gen'] = gen
+                min_obj2['idx'] = ind_idx
+                min_obj2['objectives'] = objectives.copy()
+            
+            # 检查目标函数3
+            if objectives[2] < min_obj3['value']:
+                min_obj3['value'] = objectives[2]
+                min_obj3['gen'] = gen
+                min_obj3['idx'] = ind_idx
+                min_obj3['objectives'] = objectives.copy()
+    
+    # 打印目标函数1最小的个体
+    if min_obj1['gen'] is not None:
+        print(f"\n目标函数1最小的个体：")
+        print(f"  代数: {min_obj1['gen']}, 种群内编号: {min_obj1['idx']}")
+        print(f"  目标函数值: [{min_obj1['objectives'][0]:.6f}, {min_obj1['objectives'][1]:.6f}, {min_obj1['objectives'][2]:.6f}]")
+    
+    # 打印目标函数2最小的个体
+    if min_obj2['gen'] is not None:
+        print(f"\n目标函数2最小的个体：")
+        print(f"  代数: {min_obj2['gen']}, 种群内编号: {min_obj2['idx']}")
+        print(f"  目标函数值: [{min_obj2['objectives'][0]:.6f}, {min_obj2['objectives'][1]:.6f}, {min_obj2['objectives'][2]:.6f}]")
+    
+    # 打印目标函数3最小的个体
+    if min_obj3['gen'] is not None:
+        print(f"\n目标函数3最小的个体：")
+        print(f"  代数: {min_obj3['gen']}, 种群内编号: {min_obj3['idx']}")
+        print(f"  目标函数值: [{min_obj3['objectives'][0]:.6f}, {min_obj3['objectives'][1]:.6f}, {min_obj3['objectives'][2]:.6f}]")
+
     print("\n优化趋势分析：")
     for i in range(3):
         improvement = obj_means[-1, i] - obj_means[0, i]
