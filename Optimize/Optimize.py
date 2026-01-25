@@ -537,7 +537,7 @@ except FileNotFoundError as e:
 except json.JSONDecodeError as e:
     print(f"Error decoding JSON: {e}")
 
-StartMode = 1 # 1: 生成初始方案，2: 从初始方案文件中读取初始方案, 3: 从PopHistory.json中读取初始方案
+StartMode = 2 # 1: 生成初始方案，2: 从初始方案文件中读取初始方案, 3: 从PopHistory.json中读取初始方案
 if StartMode == 1:
     # 调用函数生成初始方案
     XLD_Plan, SMX_Plan, iniVol_XLD, iniVol_SMX, planNum = generate_ini_plans()
@@ -566,7 +566,7 @@ elif StartMode == 3:
     print(f"已从第 {generation} 代加载数据，将从第 {generation + 1} 代开始优化。")
 
 # 定义可执行文件所在的目录，此路径对所有模式都必要
-exe_directory = r"D:\服务器计算结果\2R20_16_server\1D_RiverNet_OCTC"  # 替换为你exe文件所在的目录
+exe_directory = r"D:\服务器计算结果\2R20_17_server\1D_RiverNet_OCTC"  # 替换为你exe文件所在的目录
 
 # 仅当不是从历史记录恢复时，才运行初始模拟
 if StartMode != 3:

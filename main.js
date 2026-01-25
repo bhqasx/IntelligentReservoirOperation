@@ -269,7 +269,13 @@ window.onload = function() {
 
   // Fetch the JSON data for Xiaolangdi
   fetch(withProjectPath('Xiaolangdi.json'))
-    .then(response => response.json())
+    .then(response => {
+      if (!response.ok) {
+        alert("无法找到文件: " + withProjectPath('Xiaolangdi.json') + "\n请检查项目文件夹路径是否正确。");
+        throw new Error("HTTP error " + response.status);
+      }
+      return response.json();
+    })
     .then(data => {
       XLD = data;
       // Get the first chart area
