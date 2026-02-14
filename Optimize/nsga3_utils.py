@@ -305,7 +305,7 @@ def generate_offspring(P_plans_SMX, P_plans_XLD, CV):
     max_q_smx = 10974
     max_q_xld = 13311
     # 变异参数
-    mutation_rate = 0.1
+    mutation_rate = 0.2
     eta_m = 20 #越大变异越小，常见默认20
     pop_size = len(P_plans_SMX)
 
