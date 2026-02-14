@@ -20,6 +20,7 @@ import mplcursors
 from scipy.spatial import ConvexHull
 import tkinter as tk
 from tkinter import filedialog
+from tkinter import simpledialog
 
 def load_pop_history(filename='PopHistory.json'):
     """
@@ -141,6 +142,26 @@ def calculate_objective_means(obj_by_gen):
     """
     return np.mean(obj_by_gen, axis=1)
 
+def _enable_text_editing(fig, axes):
+    # Allow click-to-edit for axis labels and titles
+    for ax in axes:
+        texts = [ax.title, ax.xaxis.label, ax.yaxis.label]
+        if hasattr(ax, "zaxis"):
+            texts.append(ax.zaxis.label)
+        for text in texts:
+            text.set_picker(True)
+
+    def _on_pick(event):
+        text = event.artist
+        if not hasattr(text, "get_text"):
+            return
+        new_text = simpledialog.askstring("Edit Label", "Enter new text:", initialvalue=text.get_text())
+        if new_text is not None:
+            text.set_text(new_text)
+            fig.canvas.draw_idle()
+
+    fig.canvas.mpl_connect("pick_event", _on_pick)
+
 def create_comparison_plots(obj_by_gen, con_by_gen, generations):
     """
     创建五个子图的对比分析
@@ -150,13 +171,13 @@ def create_comparison_plots(obj_by_gen, con_by_gen, generations):
     con_by_gen: 按代数组织的约束违反值数组
     generations: 代数列表
     """
-    # 设置中文字体
-    plt.rcParams['font.sans-serif'] = ['SimHei', 'Arial Unicode MS', 'DejaVu Sans']
+    # Set font to Times New Roman
+    plt.rcParams['font.family'] = 'Times New Roman'
     plt.rcParams['axes.unicode_minus'] = False
 
     # 创建5个子图 (3x2布局)
     fig, axes = plt.subplots(3, 2, figsize=(16, 20))
-    fig.suptitle('NSGA-III优化过程分析', fontsize=16, fontweight='bold')
+    fig.suptitle('NSGA-III Optimization Analysis', fontsize=16, fontweight='bold')
 
     # 获取第一代和最后一代的数据
     first_gen_data = obj_by_gen[0]  # 第一代
@@ -164,12 +185,13 @@ def create_comparison_plots(obj_by_gen, con_by_gen, generations):
 
     # 子图1：第1、2目标函数对比
     ax1 = axes[0, 0]
-    sc1_1 = ax1.scatter(first_gen_data[:, 0], first_gen_data[:, 1], c='blue', alpha=0.7, label=f'第{generations[0]}代', marker='o')
-    sc1_2 = ax1.scatter(last_gen_data[:, 0], last_gen_data[:, 1], c='red', alpha=0.7, label=f'第{generations[-1]}代', marker='s')
-    ax1.set_xlabel('目标函数1 (-SMX QsDiff)')
-    ax1.set_ylabel('目标函数2 (-XLD QsDiff)')
-    ax1.set_title('目标函数1 vs 目标函数2')
+    sc1_1 = ax1.scatter(first_gen_data[:, 0], first_gen_data[:, 1], c='blue', alpha=0.7, label=f'Gen {generations[0]}', marker='o')
+    sc1_2 = ax1.scatter(last_gen_data[:, 0], last_gen_data[:, 1], c='red', alpha=0.7, label=f'Gen {generations[-1]}', marker='s')
+    ax1.set_xlabel('Objective 1 (-SMX QsDiff)')
+    ax1.set_ylabel('Objective 2 (-XLD QsDiff)')
+    ax1.set_title('Objective 1 vs Objective 2')
     ax1.legend()
+    ax1.get_legend().set_draggable(True)
     ax1.grid(True, alpha=0.3)
 
     # 添加鼠标悬停显示个体编号
@@ -177,21 +199,22 @@ def create_comparison_plots(obj_by_gen, con_by_gen, generations):
     @cursor1.connect("add")
     def on_add1(sel):
         if sel.artist == sc1_1:
-            sel.annotation.set_text(f'第{generations[0]}代个体 {sel.index}')
+            sel.annotation.set_text(f'Gen {generations[0]} Individual {sel.index}')
         elif sel.artist == sc1_2:
-            sel.annotation.set_text(f'第{generations[-1]}代个体 {sel.index}')
+            sel.annotation.set_text(f'Gen {generations[-1]} Individual {sel.index}')
     @cursor1.connect("remove")
     def on_remove1(sel):
         sel.annotation.set_visible(False)
 
     # 子图2：第1、3目标函数对比
     ax2 = axes[0, 1]
-    sc2_1 = ax2.scatter(first_gen_data[:, 0], first_gen_data[:, 2], c='blue', alpha=0.7, label=f'第{generations[0]}代', marker='o')
-    sc2_2 = ax2.scatter(last_gen_data[:, 0], last_gen_data[:, 2], c='red', alpha=0.7, label=f'第{generations[-1]}代', marker='s')
-    ax2.set_xlabel('目标函数1 (-SMX QsDiff)')
-    ax2.set_ylabel('目标函数3 (Flood Obj)')
-    ax2.set_title('目标函数1 vs 目标函数3')
+    sc2_1 = ax2.scatter(first_gen_data[:, 0], first_gen_data[:, 2], c='blue', alpha=0.7, label=f'Gen {generations[0]}', marker='o')
+    sc2_2 = ax2.scatter(last_gen_data[:, 0], last_gen_data[:, 2], c='red', alpha=0.7, label=f'Gen {generations[-1]}', marker='s')
+    ax2.set_xlabel('Objective 1 (-SMX QsDiff)')
+    ax2.set_ylabel('Objective 3 (Flood Obj)')
+    ax2.set_title('Objective 1 vs Objective 3')
     ax2.legend()
+    ax2.get_legend().set_draggable(True)
     ax2.grid(True, alpha=0.3)
 
     # 添加鼠标悬停显示个体编号
@@ -199,21 +222,22 @@ def create_comparison_plots(obj_by_gen, con_by_gen, generations):
     @cursor2.connect("add")
     def on_add2(sel):
         if sel.artist == sc2_1:
-            sel.annotation.set_text(f'第{generations[0]}代个体 {sel.index}')
+            sel.annotation.set_text(f'Gen {generations[0]} Individual {sel.index}')
         elif sel.artist == sc2_2:
-            sel.annotation.set_text(f'第{generations[-1]}代个体 {sel.index}')
+            sel.annotation.set_text(f'Gen {generations[-1]} Individual {sel.index}')
     @cursor2.connect("remove")
     def on_remove2(sel):
         sel.annotation.set_visible(False)
 
     # 子图3：第2、3目标函数对比
     ax3 = axes[1, 0]
-    sc3_1 = ax3.scatter(first_gen_data[:, 1], first_gen_data[:, 2], c='blue', alpha=0.7, label=f'第{generations[0]}代', marker='o')
-    sc3_2 = ax3.scatter(last_gen_data[:, 1], last_gen_data[:, 2], c='red', alpha=0.7, label=f'第{generations[-1]}代', marker='s')
-    ax3.set_xlabel('目标函数2 (-XLD QsDiff)')
-    ax3.set_ylabel('目标函数3 (Flood Obj)')
-    ax3.set_title('目标函数2 vs 目标函数3')
+    sc3_1 = ax3.scatter(first_gen_data[:, 1], first_gen_data[:, 2], c='blue', alpha=0.7, label=f'Gen {generations[0]}', marker='o')
+    sc3_2 = ax3.scatter(last_gen_data[:, 1], last_gen_data[:, 2], c='red', alpha=0.7, label=f'Gen {generations[-1]}', marker='s')
+    ax3.set_xlabel('Objective 2 (-XLD QsDiff)')
+    ax3.set_ylabel('Objective 3 (Flood Obj)')
+    ax3.set_title('Objective 2 vs Objective 3')
     ax3.legend()
+    ax3.get_legend().set_draggable(True)
     ax3.grid(True, alpha=0.3)
 
     # 添加鼠标悬停显示个体编号
@@ -221,9 +245,9 @@ def create_comparison_plots(obj_by_gen, con_by_gen, generations):
     @cursor3.connect("add")
     def on_add3(sel):
         if sel.artist == sc3_1:
-            sel.annotation.set_text(f'第{generations[0]}代个体 {sel.index}')
+            sel.annotation.set_text(f'Gen {generations[0]} Individual {sel.index}')
         elif sel.artist == sc3_2:
-            sel.annotation.set_text(f'第{generations[-1]}代个体 {sel.index}')
+            sel.annotation.set_text(f'Gen {generations[-1]} Individual {sel.index}')
     @cursor3.connect("remove")
     def on_remove3(sel):
         sel.annotation.set_visible(False)
@@ -237,7 +261,7 @@ def create_comparison_plots(obj_by_gen, con_by_gen, generations):
 
     # 绘制前两个目标函数在主轴上
     colors = ['blue', 'green']
-    labels = ['目标函数1 (-SMX QsDiff)', '目标函数2 (-XLD QsDiff)']
+    labels = ['Objective 1 (-SMX QsDiff)', 'Objective 2 (-XLD QsDiff)']
     lines_left = []
     for i in range(2):
         line, = ax4.plot(generations, obj_means[:, i], color=colors[i], linewidth=2,
@@ -246,19 +270,20 @@ def create_comparison_plots(obj_by_gen, con_by_gen, generations):
 
     # 绘制第三个目标函数在右侧轴上
     line_right, = ax4_right.plot(generations, obj_means[:, 2], color='red', linewidth=2,
-                                marker='o', markersize=4, label='目标函数3 (Flood Obj)')
+                                marker='o', markersize=4, label='Objective 3 (Flood Obj)')
 
     # 设置轴标签
-    ax4.set_xlabel('代数')
-    ax4.set_ylabel('目标函数1和2平均值')
-    ax4_right.set_ylabel('目标函数3平均值')
+    ax4.set_xlabel('Generation')
+    ax4.set_ylabel('Mean Objective 1 and 2')
+    ax4_right.set_ylabel('Mean Objective 3')
 
-    ax4.set_title('目标函数平均值随代数变化')
+    ax4.set_title('Mean Objectives over Generations')
     
     # 合并图例
     lines = lines_left + [line_right]
     labels = [l.get_label() for l in lines]
     ax4.legend(lines, labels, loc='upper left')
+    ax4.get_legend().set_draggable(True)
     
     ax4.grid(True, alpha=0.3)
 
@@ -268,22 +293,24 @@ def create_comparison_plots(obj_by_gen, con_by_gen, generations):
 
     # 绘制三个约束违反值
     colors = ['blue', 'orange', 'brown']
-    labels = ['约束1违反值', '约束2违反值', '约束3违反值']
+    labels = ['Constraint 1 Violation', 'Constraint 2 Violation', 'Constraint 3 Violation']
     for i in range(3):
         ax5.plot(generations, con_means[:, i], color=colors[i], linewidth=2,
                 marker='o', markersize=4, label=labels[i])
 
     # 设置轴标签
-    ax5.set_xlabel('代数')
-    ax5.set_ylabel('约束违反值')
-    ax5.set_title('约束违反值随代数变化')
+    ax5.set_xlabel('Generation')
+    ax5.set_ylabel('Constraint Violation')
+    ax5.set_title('Constraint Violations over Generations')
     ax5.legend()
+    ax5.get_legend().set_draggable(True)
     ax5.grid(True, alpha=0.3)
 
     # 调整子图间距
     plt.tight_layout()
     plt.subplots_adjust(top=0.92, hspace=0.3, wspace=0.2)
 
+    _enable_text_editing(fig, axes.flatten())
     return fig
 
 def create_3d_plot(obj_by_gen, generations):
@@ -302,9 +329,9 @@ def create_3d_plot(obj_by_gen, generations):
 
     # 绘制散点
     ax.scatter(first_gen_data[:, 0], first_gen_data[:, 1], first_gen_data[:, 2], 
-               c='blue', alpha=0.7, label=f'第{generations[0]}代')
+               c='blue', alpha=0.7, label=f'Gen {generations[0]}')
     ax.scatter(last_gen_data[:, 0], last_gen_data[:, 1], last_gen_data[:, 2], 
-               c='red', alpha=0.7, label=f'第{generations[-1]}代')
+               c='red', alpha=0.7, label=f'Gen {generations[-1]}')
 
     ys_create_surf=0
     if ys_create_surf:
@@ -318,14 +345,15 @@ def create_3d_plot(obj_by_gen, generations):
         ax.plot_trisurf(last_gen_data[:, 0], last_gen_data[:, 1], last_gen_data[:, 2], 
                         triangles=hull2.simplices, color='red', alpha=0.3)
 
-    ax.set_xlabel('目标函数1 (-SMX QsDiff)')
-    ax.set_ylabel('目标函数2 (-XLD QsDiff)')
-    ax.set_zlabel('目标函数3 (Flood Obj)')
-    ax.set_title('第1代和最后一代3D目标函数分布')
+    ax.set_xlabel('Objective 1 (-SMX QsDiff)')
+    ax.set_ylabel('Objective 2 (-XLD QsDiff)')
+    ax.set_zlabel('Objective 3 (Flood Obj)')
+    ax.set_title('Gen 1 vs Final Gen: 3D Objective Distribution')
     legend = ax.legend()
     if legend:
         legend.set_draggable(True)
 
+    _enable_text_editing(fig, [ax])
     return fig
 
 def create_3d_layers(obj_by_gen, generations, history_data):
@@ -364,7 +392,7 @@ def create_3d_layers(obj_by_gen, generations, history_data):
     cmap = plt.cm.get_cmap('tab10', len(rank_to_indices))
 
     ax.scatter(data[:, 0], data[:, 1], data[:, 2],
-               c='lightgray', alpha=0.5, label='个体')
+               c='lightgray', alpha=0.5, label='Individuals')
 
     for line_idx, (rank, indices) in enumerate(sorted(rank_to_indices.items())):
         ordered = sorted(indices, key=lambda i: data[i, 0])
@@ -373,13 +401,15 @@ def create_3d_layers(obj_by_gen, generations, history_data):
                 color=cmap(line_idx), linewidth=2, marker='o',
                 label=f'Rank {rank}')
 
-    ax.set_xlabel('目标函数1 (-SMX QsDiff)')
-    ax.set_ylabel('目标函数2 (-XLD QsDiff)')
-    ax.set_zlabel('目标函数3 (Flood Obj)')
-    ax.set_title(f'第{gen}代帕累托分层连线图')
+    ax.set_xlabel('Objective 1 (-SMX QsDiff)')
+    ax.set_ylabel('Objective 2 (-XLD QsDiff)')
+    ax.set_zlabel('Objective 3 (Flood Obj)')
+    ax.set_title(f'Generation {gen}: Pareto Rank Connections')
     legend = ax.legend()
     if legend:
         legend.set_draggable(True)
+
+    _enable_text_editing(fig, [ax])
     plt.show(block=True)
 
 def plot_gene_evolution(history_data, generations):
@@ -451,11 +481,11 @@ def plot_gene_evolution(history_data, generations):
         values = [plan[seq_input][gene_idx] for plan in plans]
         gen_means.append(np.mean(values))
     
-    ax.plot(generations, gen_means, color='red', linewidth=2, marker='o', markersize=4, label='平均值')
+    ax.plot(generations, gen_means, color='red', linewidth=2, marker='o', markersize=4, label='Mean')
     
-    ax.set_xlabel('代数')
-    ax.set_ylabel(f'{reservoir_name} {seq_input}[{gene_idx}] 值')
-    ax.set_title(f'{reservoir_name} 水库 {seq_input}[{gene_idx}] 基因演化过程')
+    ax.set_xlabel('Generation')
+    ax.set_ylabel(f'{reservoir_name} {seq_input}[{gene_idx}] Value')
+    ax.set_title(f'{reservoir_name} {seq_input}[{gene_idx}] Gene Evolution')
     ax.legend()
     ax.grid(True, alpha=0.3)
     
@@ -599,6 +629,10 @@ def main():
 
     # 创建可视化图表
     fig = create_comparison_plots(obj_by_gen, con_by_gen, generations)
+
+    print("\nTips for the comparison plot:")
+    print(" - Click an axis title/label to edit it.")
+    print(" - Drag legends with the mouse to reposition them.")
 
     # 显示图表
     plt.show(block=True)
