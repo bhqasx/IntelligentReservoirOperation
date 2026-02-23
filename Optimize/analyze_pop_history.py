@@ -331,7 +331,9 @@ def create_3d_plot(obj_by_gen, generations):
     ax.scatter(first_gen_data[:, 0], first_gen_data[:, 1], first_gen_data[:, 2], 
                c='blue', alpha=0.7, label=f'Gen {generations[0]}')
     ax.scatter(last_gen_data[:, 0], last_gen_data[:, 1], last_gen_data[:, 2], 
-               c='red', alpha=0.7, label=f'Gen {generations[-1]}')
+               c='red', alpha=0.7, label=f'Gen {generations[-1]}', marker='s')
+    # ax.scatter(last_gen_data[:, 0], last_gen_data[:, 1], last_gen_data[:, 2],
+    #            c='red', alpha=0.7, label=f'Gen {generations[-1]}', marker='s')
 
     ys_create_surf=0
     if ys_create_surf:
