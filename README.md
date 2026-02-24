@@ -1,2 +1,2 @@
 # 调试方法
-资源管理器中双击运行start-server.bat，然后打开VScode/Cursor，打开文件夹，点击Run->start debugging，填写完后点击保存，将浏览器下载的SMX_keypoints.json和XLD_keypoints.json粘贴至当前目录，然后在VScode/Cursor中打开Optimize文件夹，注意Optimize.py中的exe_directory是否设置为了水沙动力学模型所在文件夹，运行Optimize.py文件
+资源管理器中双击运行start-server.bat，然后打开VScode/Cursor，打开文件夹，点击Run->start debugging，填写完后点击保存，将浏览器下载的SMX_keypoints.json和XLD_keypoints.json粘贴Cases下自己命名的算例文件夹中，然后在VScode/Cursor中打开Optimize文件夹，注意Optimize.py中的exe_directory是否设置为了水沙动力学模型所在文件夹，运行Optimize.py文件
