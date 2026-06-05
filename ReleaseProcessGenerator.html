@@ -39,6 +39,7 @@
     }
 
     input[type="number"] {
+      appearance: textfield;
       -moz-appearance: textfield;
     }
   </style>
@@ -186,6 +187,17 @@
   <button id="plot">绘制</button>
   <button id="GenerateInitialPlan">生成初始计划</button>
 </body>
-<script src="main.js"></script>
-<script src="GenerateIniP.js"></script>
+<script>
+  (function loadScripts() {
+    var cacheBust = '?v=' + Date.now();
+    var mainScript = document.createElement('script');
+    mainScript.src = 'main.js' + cacheBust;
+
+    var generateScript = document.createElement('script');
+    generateScript.src = 'GenerateIniP.js' + cacheBust;
+
+    document.body.appendChild(mainScript);
+    document.body.appendChild(generateScript);
+  })();
+</script>
 </html>

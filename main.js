@@ -250,25 +250,47 @@ function CalculateRefillT(volChange, tt, qq, ttNat, qqNat, tCtrl, qCtrl) {
 let projectFolder = "";
 const withProjectPath = (p) => projectFolder + p;
 
+function normalizeProjectFolder(pathValue) {
+  let normalizedPath = String(pathValue ?? "").trim().replace(/\\/g, "/");
+  if (normalizedPath !== "" && !normalizedPath.endsWith("/")) normalizedPath += "/";
+  return normalizedPath;
+}
+
 // 新增：用于真正写入用户选择的目录（Chrome/Edge）
 let saveDirHandle = null;
 
-window.onload = function() {
+window.onload = async function() {
   //弹出一个提示框
   //alert('这是第2版');
   
   // 提示用户选择项目文件夹（赋值给顶层变量，避免作用域断开）
-  /** @type {string} */
-  projectFolder = (typeof prompt === 'function'
-    ? prompt("请输入项目文件夹路径 (例如: Optimize/, 留空则默认为当前目录):", "")
-    : ""
-  ) ?? "";
+  let useConfiguredCasePath = false;
 
-  projectFolder = String(projectFolder).trim().replace(/\\/g, "/");
-  if (projectFolder !== "" && !projectFolder.endsWith("/")) projectFolder += "/";
+  try {
+    const configResponse = await fetch('ModelCongfig.json', { cache: 'no-store' });
+    if (configResponse.ok) {
+      const modelConfig = await configResponse.json();
+      if (Number(modelConfig.run_in_platform) === 1 && String(modelConfig.CurrentCasePath ?? '').trim() !== '') {
+        projectFolder = normalizeProjectFolder(modelConfig.CurrentCasePath);
+        useConfiguredCasePath = true;
+      }
+    }
+  } catch (error) {
+    console.warn('读取 ModelCongfig.json 失败，将继续弹出文件夹选择窗口。', error);
+  }
+
+  if (!useConfiguredCasePath) {
+    /** @type {string} */
+    projectFolder = (typeof prompt === 'function'
+      ? prompt("请输入项目文件夹路径 (例如: Optimize/, 留空则默认为当前目录):", "")
+      : ""
+    ) ?? "";
+  }
+
+  projectFolder = normalizeProjectFolder(projectFolder);
 
   // Fetch the JSON data for Xiaolangdi
-  fetch(withProjectPath('Xiaolangdi.json'))
+  fetch(withProjectPath('Xiaolangdi.json'), { cache: 'no-store' })
     .then(response => {
       if (!response.ok) {
         alert("无法找到文件: " + withProjectPath('Xiaolangdi.json') + "\n请检查项目文件夹路径是否正确。");
@@ -346,7 +368,7 @@ window.onload = function() {
     });
   
   // Fetch the JSON data for Sanmenxia
-  fetch(withProjectPath('Sanmenxia.json'))
+  fetch(withProjectPath('Sanmenxia.json'), { cache: 'no-store' })
     .then(response => response.json())
     .then(data => {
       SMX = data;
