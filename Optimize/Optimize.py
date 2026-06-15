@@ -20,6 +20,22 @@ from mpl_toolkits.mplot3d import Axes3D
 import matplotlib
 matplotlib.use('TkAgg')  # 使用支持交互的后端
 
+
+def sanitize_path_text(value):
+    if not isinstance(value, str):
+        return value
+    return value.translate({
+        0x202A: None,
+        0x202B: None,
+        0x202C: None,
+        0x202D: None,
+        0x202E: None,
+        0x2066: None,
+        0x2067: None,
+        0x2068: None,
+        0x2069: None,
+    }).strip()
+
 # 选择初始方案文件夹
 root = tk.Tk()
 root.withdraw()
@@ -589,7 +605,7 @@ elif StartMode == 3:
     print(f"已从第 {generation} 代加载数据，将从第 {generation + 1} 代开始优化。")
 
 # 定义可执行文件所在的目录，此路径对所有模式都必要
-exe_directory = case_config.get('exe_directory')
+exe_directory = sanitize_path_text(case_config.get('exe_directory'))
 if exe_directory in ('', None):
     input("Error: 未在CaseConfig.json中读取到 exe_directory，按 Enter 键退出...")
     raise ValueError("CaseConfig.json 缺少 exe_directory")
