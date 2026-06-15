@@ -278,39 +278,6 @@ def find_file(filename):
         return parent_file
     raise FileNotFoundError(f"Could not find {filename} in {initial_plan_folder}, current or parent directory")
 
-# 读取XLD_keypoints.json和SMX_keypoints.json
-try:
-    xld_file = find_file("XLD_keypoints.json")
-    smx_file = find_file("SMX_keypoints.json")
-
-    with open(xld_file, 'r') as f:
-        tempData = json.load(f)
-        XLD_KeyP = {
-            't': tempData.get('t', []),
-            'q': tempData.get('q', [])
-        }
-        XLD_HyperPara = {
-            'WlFldContr': tempData.get('WlFldContr', 0),
-            'WlReg': tempData.get('WlReg', 0),
-            'volWatSupply': tempData.get('volWatSupply', 0)
-        }        
-    
-    with open(smx_file, 'r') as f:
-        tempData = json.load(f)
-        SMX_KeyP = {
-            't': tempData.get('t', []),
-            'q': tempData.get('q', [])
-        }
-        SMX_HyperPara = {
-            'WlFldContr': tempData.get('WlFldContr', 0),
-        }
-
-    print("Successfully loaded XLD_keypoints.json and SMX_keypoints.json")
-except FileNotFoundError as e:
-    print(f"Error: {e}")
-except json.JSONDecodeError as e:
-    print(f"Error decoding JSON: {e}")
-
 
 def generate_from_SMX(i, xld_plan, smx_plan):
     global SMX_t_in, SMX_q_in, SMX_HyperPara, SMX_CapCurve, iniVol_SMX
@@ -412,10 +379,8 @@ def generate_ini_plans():
     global iniVol_SMX, iniVol_XLD  # 声明为全局变量，供其他函数使用
     global XLD_Plan, SMX_Plan
     
-    iniWL_XLD = 250.8
-    #在终端提示输入小浪底初始水位，并显示当前默认输入值是iniWL_XLD，如果用户输入为空，则使用默认值
-    iniWL_XLD = input(f"请输入小浪底初始水位: (默认值: {iniWL_XLD})")
-    if iniWL_XLD == '':
+    iniWL_XLD = case_config.get('iniWL_XLD', 250.8)
+    if iniWL_XLD in ('', None):
         iniWL_XLD = 250.8
     else:
         iniWL_XLD = float(iniWL_XLD)
@@ -423,10 +388,8 @@ def generate_ini_plans():
     yy = XLD_CapCurve['Vol']
     iniVol_XLD = interpolate(iniWL_XLD, xx, yy)
 
-    iniWL_SMX = 318
-    #在终端提示输入三门峡初始水位，并显示当前默认输入值是iniWL_SMX，如果用户输入为空，则使用默认值
-    iniWL_SMX = input(f"请输入三门峡初始水位: (默认值: {iniWL_SMX})")
-    if iniWL_SMX == '':
+    iniWL_SMX = case_config.get('iniWL_SMX', 318)
+    if iniWL_SMX in ('', None):
         iniWL_SMX = 318
     else:
         iniWL_SMX = float(iniWL_SMX)
@@ -435,7 +398,15 @@ def generate_ini_plans():
     iniVol_SMX = interpolate(iniWL_SMX, xx, yy)
 
     # 设置方案数量
-    planNum = 15
+    planNum = case_config.get('planNum')
+    if planNum in ('', None):
+        input("Error: 未在CaseConfig.json中读取到 planNum，按 Enter 键退出...")
+        raise ValueError("CaseConfig.json 缺少 planNum")
+    try:
+        planNum = int(planNum)
+    except (TypeError, ValueError):
+        input("Error: CaseConfig.json 中的 planNum 不是有效整数，按 Enter 键退出...")
+        raise ValueError(f"Invalid planNum: {planNum}")
     # 用一个数据结构存储XLD的planNum个方案，其中每个方案都有t和q两个数组，且数组长度与XLD_KeyP中的t数组长度相同
     XLD_Plan = []
     for i in range(planNum):
@@ -495,13 +466,19 @@ def generate_ini_plans():
             if SMX_Plan[i]['q'][j] is None:
                 SMX_Plan[i]['q'][j] = 0
 
-    save_initial_plan = input("是否保存初始方案？(y/n)")
-    if save_initial_plan == 'y':
-        # 将XLD_Plan和SMX_Plan保存为json文件
+    if str(case_config.get('run_in_platform', '')).strip() == '1':
         with open(os.path.join(initial_plan_folder, 'XLD_Plan.json'), 'w') as f:
             json.dump(XLD_Plan, f, indent=2)
         with open(os.path.join(initial_plan_folder, 'SMX_Plan.json'), 'w') as f:
-            json.dump(SMX_Plan, f, indent=2)    
+            json.dump(SMX_Plan, f, indent=2)
+    else:
+        save_initial_plan = input("是否保存初始方案？(y/n)")
+        if save_initial_plan == 'y':
+            # 将XLD_Plan和SMX_Plan保存为json文件
+            with open(os.path.join(initial_plan_folder, 'XLD_Plan.json'), 'w') as f:
+                json.dump(XLD_Plan, f, indent=2)
+            with open(os.path.join(initial_plan_folder, 'SMX_Plan.json'), 'w') as f:
+                json.dump(SMX_Plan, f, indent=2)
 
     # 在返回前赋值给全局变量
     globals()['XLD_Plan'] = XLD_Plan
@@ -537,7 +514,53 @@ except FileNotFoundError as e:
 except json.JSONDecodeError as e:
     print(f"Error decoding JSON: {e}")
 
+# 读取XLD_keypoints.json和SMX_keypoints.json
+try:
+    xld_file = find_file("XLD_keypoints.json")
+    smx_file = find_file("SMX_keypoints.json")
+
+    with open(xld_file, 'r') as f:
+        tempData = json.load(f)
+        XLD_KeyP = {
+            't': tempData.get('t', []),
+            'q': tempData.get('q', [])
+        }
+        XLD_HyperPara = {
+            'WlFldContr': tempData.get('WlFldContr', 0),
+            'WlReg': tempData.get('WlReg', 0),
+            'volWatSupply': tempData.get('volWatSupply', 0)
+        }
+
+    with open(smx_file, 'r') as f:
+        tempData = json.load(f)
+        SMX_KeyP = {
+            't': tempData.get('t', []),
+            'q': tempData.get('q', [])
+        }
+        SMX_HyperPara = {
+            'WlFldContr': tempData.get('WlFldContr', 0),
+        }
+
+    print("Successfully loaded XLD_keypoints.json and SMX_keypoints.json")
+except FileNotFoundError as e:
+    print(f"Error: {e}")
+except json.JSONDecodeError as e:
+    print(f"Error decoding JSON: {e}")
+
 StartMode = 2 # 1: 生成初始方案，2: 从初始方案文件中读取初始方案, 3: 从PopHistory.json中读取初始方案
+
+case_config = {}
+case_config_path = os.path.join(initial_plan_folder, 'CaseConfig.json')
+try:
+    with open(case_config_path, 'r', encoding='utf-8-sig') as f:
+        case_config = json.load(f)
+    if str(case_config.get('run_in_platform', '')).strip() == '1':
+        StartMode = 1
+except FileNotFoundError:
+    pass
+except json.JSONDecodeError as e:
+    print(f"Error decoding JSON: {e}")
+
 if StartMode == 1:
     # 调用函数生成初始方案
     XLD_Plan, SMX_Plan, iniVol_XLD, iniVol_SMX, planNum = generate_ini_plans()
@@ -566,7 +589,10 @@ elif StartMode == 3:
     print(f"已从第 {generation} 代加载数据，将从第 {generation + 1} 代开始优化。")
 
 # 定义可执行文件所在的目录，此路径对所有模式都必要
-exe_directory = r"D:\服务器计算结果\2R20_17_server\1D_RiverNet_OCTC"  # 替换为你exe文件所在的目录
+exe_directory = case_config.get('exe_directory')
+if exe_directory in ('', None):
+    input("Error: 未在CaseConfig.json中读取到 exe_directory，按 Enter 键退出...")
+    raise ValueError("CaseConfig.json 缺少 exe_directory")
 
 # 仅当不是从历史记录恢复时，才运行初始模拟
 if StartMode != 3:
@@ -687,7 +713,12 @@ from nsga3_utils import normalize_objectives
 fig, ax1, ax2 = setup_plot()
 update_plot(fig, ax1, ax2, obj, ConstraintViolation, generation)
 
-max_gen = 200
+max_gen = case_config.get('max_gen', 200)
+if max_gen in ('', None):
+    max_gen = 200
+else:
+    max_gen = int(max_gen)
+    
 while generation <= max_gen:
     print(f"第{generation}代")
 
@@ -869,13 +900,18 @@ while generation <= max_gen:
 
     # 检查是否达到最大代数，并询问用户是否继续
     if generation > max_gen:
-        new_max_gen_str = input(f"已达到最大代数 ({max_gen})。输入新的最大代数以继续，或按 Enter 键退出: ")
-        if new_max_gen_str.isdigit():
-            new_max_gen = int(new_max_gen_str)
-            if new_max_gen > max_gen:
-                max_gen = new_max_gen
-                print(f"优化将继续，直到第 {max_gen} 代。")
-            else:
-                print(f"新数值 ({new_max_gen}) 不大于当前最大代数 ({max_gen})。正在退出。")
+        if str(case_config.get('run_in_platform', '')).strip() == '1':
+            print(f"已达到最大代数 ({max_gen})。平台模式下自动结束。")
         else:
-            print("正在退出优化。")
+            new_max_gen_str = input(f"已达到最大代数 ({max_gen})。输入新的最大代数以继续，或按 Enter 键退出: ")
+            if new_max_gen_str.isdigit():
+                new_max_gen = int(new_max_gen_str)
+                if new_max_gen > max_gen:
+                    max_gen = new_max_gen
+                    print(f"优化将继续，直到第 {max_gen} 代。")
+                else:
+                    print(f"新数值 ({new_max_gen}) 不大于当前最大代数 ({max_gen})。正在退出。")
+            else:
+                print("正在退出优化。")
+
+print("success计算完成")
