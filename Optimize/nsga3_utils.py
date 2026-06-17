@@ -232,6 +232,7 @@ def polynomial_mutation_variable(x, eta, x_min, x_max, mutation_rate):
         return x
     if x_max <= x_min:
         raise ValueError(f"变量边界设置错误: x_max ({x_max}) <= x_min ({x_min})，请检查边界参数设置")
+    x = max(x_min, min(x_max, x))
     # 归一化到 [0,1] 的距离
     delta1 = (x - x_min) / (x_max - x_min)
     delta2 = (x_max - x) / (x_max - x_min)
