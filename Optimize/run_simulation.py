@@ -10,7 +10,22 @@ import time
 global case
 case = [None]  # 0号位置放个None
 
-def select_directory():
+
+def should_prompt(run_in_platform=False):
+    return not bool(run_in_platform)
+
+
+def platform_print(*args, run_in_platform=False, **kwargs):
+    if should_prompt(run_in_platform):
+        print(*args, **kwargs)
+
+
+def platform_input(prompt='', run_in_platform=False):
+    if should_prompt(run_in_platform):
+        return input(prompt)
+    return ''
+
+def select_directory(run_in_platform=False):
     """弹出目录选择对话框让用户选择目录"""
     root = tk.Tk()
     root.withdraw()  # 隐藏主窗口
@@ -23,12 +38,12 @@ def select_directory():
     
     # 如果用户取消选择，返回None
     if not directory:
-        print("用户取消了目录选择")
+        platform_print("用户取消了目录选择", run_in_platform=run_in_platform)
         return None
     
     return directory
 
-def run_simulation(argument, exe_directory, test=False):
+def run_simulation(argument, exe_directory, test=False, run_in_platform=False):
     """运行单个模拟"""
     executable = "1D_RiverNet_OCTC.exe"
     try:
@@ -37,7 +52,7 @@ def run_simulation(argument, exe_directory, test=False):
         else:
             # 正常模式：运行完整模拟
             cmd = [os.path.join(exe_directory, executable), argument]
-            print(f"运行命令: {' '.join(cmd)}")
+            platform_print(f"运行命令: {' '.join(cmd)}", run_in_platform=run_in_platform)
             result = subprocess.run(cmd, 
                                   cwd=exe_directory,  # 设置工作目录
                                   creationflags=subprocess.CREATE_NEW_CONSOLE,  # 创建新的控制台窗口
@@ -52,7 +67,7 @@ def run_simulation(argument, exe_directory, test=False):
     except subprocess.CalledProcessError as e:
         return f"An error occurred for {argument}: {e}"
 
-def evaluate_case(case_number, exe_directory):
+def evaluate_case(case_number, exe_directory, run_in_platform=False):
     global case
     """评估单个case的结果，返回评估分数"""
     case_dir = os.path.join(exe_directory, f"case{case_number}")
@@ -86,7 +101,7 @@ def evaluate_case(case_number, exe_directory):
         # 读取FlowCS  1.txt中的数据
         result_file = os.path.join(out_dir, reach_dir, "FlowCS  1.txt")
         if not os.path.exists(result_file):
-            print(f"Result file not found for case{case_number}")
+            platform_print(f"Result file not found for case{case_number}", run_in_platform=run_in_platform)
             return 0
         
         with open(result_file, 'r') as f:
@@ -108,7 +123,7 @@ def evaluate_case(case_number, exe_directory):
                             time_values.append(np.nan)
                             qin_values.append(np.nan)
                             sus_values.append(np.nan)
-                            print(f"警告: 在 case{case_number} 的 FlowCS 1.txt 中遇到无效数据行，已停止解析该文件。")
+                            platform_print(f"警告: 在 case{case_number} 的 FlowCS 1.txt 中遇到无效数据行，已停止解析该文件。", run_in_platform=run_in_platform)
                             break
 
             # 将列表转换为NumPy数组
@@ -119,7 +134,7 @@ def evaluate_case(case_number, exe_directory):
         # 读取最后一个FlowCS文件中的数据
         result_file = os.path.join(out_dir, reach_dir, "FlowCS  {}.txt".format(flowcs_num))
         if not os.path.exists(result_file):
-            print(f"Result file not found for case{case_number}")
+            platform_print(f"Result file not found for case{case_number}", run_in_platform=run_in_platform)
             return 0
 
         with open(result_file, 'r') as f:
@@ -141,7 +156,7 @@ def evaluate_case(case_number, exe_directory):
                             qin_values.append(np.nan)
                             sus_values.append(np.nan)
                             z_values.append(np.nan)
-                            print(f"警告: 在 case{case_number} 的 FlowCS {flowcs_num}.txt 中遇到无效数据行，已停止解析该文件。")
+                            platform_print(f"警告: 在 case{case_number} 的 FlowCS {flowcs_num}.txt 中遇到无效数据行，已停止解析该文件。", run_in_platform=run_in_platform)
                             break
 
             # 将列表转换为NumPy数组
@@ -152,14 +167,14 @@ def evaluate_case(case_number, exe_directory):
             if z_values:
                 case[case_number][iReach]["Zend_lastCS"] = z_values[-1]
             else:
-                print(f"警告: case{case_number} 的 FlowCS {flowcs_num}.txt 中未读取到有效 z_values 数据")
+                platform_print(f"警告: case{case_number} 的 FlowCS {flowcs_num}.txt 中未读取到有效 z_values 数据", run_in_platform=run_in_platform)
                 return 0
         # 计算入库沙量
         qs_in = case[case_number][iReach]["Qin"] * case[case_number][iReach]["SusIn"]
         try:
             qs_in_integral = np.trapz(qs_in, case[case_number][iReach]["Time"])
         except Exception as e:
-            print(f"警告: 在 case{case_number} 的 FlowCS {flowcs_num}.txt 中计算入库沙量时发生错误：{e}")
+            platform_print(f"警告: 在 case{case_number} 的 FlowCS {flowcs_num}.txt 中计算入库沙量时发生错误：{e}", run_in_platform=run_in_platform)
             return 0
 
         # 计算出库沙量
@@ -167,7 +182,7 @@ def evaluate_case(case_number, exe_directory):
         try:
             qs_out_integral = np.trapz(qs_out, case[case_number][iReach]["Time"])
         except Exception as e:
-            print(f"警告: 在 case{case_number} 的 FlowCS {flowcs_num}.txt 中计算出库沙量时发生错误：{e}")
+            platform_print(f"警告: 在 case{case_number} 的 FlowCS {flowcs_num}.txt 中计算出库沙量时发生错误：{e}", run_in_platform=run_in_platform)
             return 0
 
         # 计算入库沙量和出库沙量的差值
@@ -182,7 +197,7 @@ def evaluate_case(case_number, exe_directory):
         time.sleep(1)
         wait_time += 1
     if not os.path.exists(result_path):
-        print(f"Result file not found for case{case_number}: {result_path}")
+        platform_print(f"Result file not found for case{case_number}: {result_path}", run_in_platform=run_in_platform)
         return 0
     with open(result_path, 'r') as f:
         lines = f.readlines()
@@ -198,27 +213,27 @@ def evaluate_case(case_number, exe_directory):
 
 
 
-def run_all_simulations(planNum, exe_directory=None, test=False):
+def run_all_simulations(planNum, exe_directory=None, test=False, run_in_platform=False):
     global case
     # 创建planNum+1个字典的列表（0号位置不用）
     case = [None] + [dict() for _ in range(planNum)]    
     """运行所有模拟"""
     # 如果没有提供exe_directory，弹出目录选择对话框
     if exe_directory is None:
-        exe_directory = select_directory()
+        exe_directory = select_directory(run_in_platform=run_in_platform)
         if exe_directory is None:
-            print("未选择目录，退出程序")
+            platform_print("未选择目录，退出程序", run_in_platform=run_in_platform)
             return
     
     # 检查exe_directory是否存在
     if not os.path.exists(exe_directory):
-        print(f"错误: 目录 {exe_directory} 不存在")
+        platform_print(f"错误: 目录 {exe_directory} 不存在", run_in_platform=run_in_platform)
         return
     
     # 检查可执行文件是否存在
     executable = "1D_RiverNet_OCTC.exe"
     if not os.path.exists(os.path.join(exe_directory, executable)):
-        print(f"错误: 可执行文件 {executable} 在目录 {exe_directory} 中未找到")
+        platform_print(f"错误: 可执行文件 {executable} 在目录 {exe_directory} 中未找到", run_in_platform=run_in_platform)
         return
     
     # 准备参数
@@ -228,33 +243,33 @@ def run_all_simulations(planNum, exe_directory=None, test=False):
     case_status = [1] * planNum
     
     # 运行模拟
-    print(f"开始运行{planNum}个模拟{'（仅测试窗口标题）' if test else ''}")
-    print(f"使用目录: {exe_directory}")
+    platform_print(f"开始运行{planNum}个模拟{'（仅测试窗口标题）' if test else ''}", run_in_platform=run_in_platform)
+    platform_print(f"使用目录: {exe_directory}", run_in_platform=run_in_platform)
     
     with ThreadPoolExecutor() as executor:
-        futures = [executor.submit(run_simulation, arg, exe_directory, test) for arg in arguments]
+        futures = [executor.submit(run_simulation, arg, exe_directory, test, run_in_platform) for arg in arguments]
         # 修改这里：去掉 as_completed，直接遍历 futures
         # 这样 i=0 时对应 case1 的 future，i=1 时对应 case2 的 future...
         # future.result() 会阻塞直到该特定任务完成
         for i, future in enumerate(futures):
-            print(future.result())
+            platform_print(future.result(), run_in_platform=run_in_platform)
             # 在每个模拟完成后评估结果
             case_number = i + 1
             
             # --- 建议修改开始：增加异常捕获和暂停 ---
             try:
-                case_status[i] = evaluate_case(case_number, exe_directory)
+                case_status[i] = evaluate_case(case_number, exe_directory, run_in_platform=run_in_platform)
             except Exception as e:
-                print(f"Error evaluating case {case_number}: {e}")
-                print(">>> 发生错误，程序已暂停。请检查报错信息和对应的 Case 文件夹。")
-                input(">>> 按回车键(Enter)继续...")
+                platform_print(f"Error evaluating case {case_number}: {e}", run_in_platform=run_in_platform)
+                platform_print(">>> 发生错误，程序已暂停。请检查报错信息和对应的 Case 文件夹。", run_in_platform=run_in_platform)
+                platform_input(">>> 按回车键(Enter)继续...", run_in_platform=run_in_platform)
                 case_status[i] = 0  # 标记该 case 失败
             # --- 建议修改结束 ---
 
     if not test:
-        print("Case evaluation results:", case_status)
+        platform_print("Case evaluation results:", case_status, run_in_platform=run_in_platform)
     else:
-        print("窗口标题测试完成")
+        platform_print("窗口标题测试完成", run_in_platform=run_in_platform)
 
     return case, case_status  # 返回case变量和状态
 
@@ -266,15 +281,16 @@ if __name__ == "__main__":
     parser.add_argument('--planNum', type=int, help='方案数量')
     parser.add_argument('--exe_dir', type=str, help='可执行文件目录')
     parser.add_argument('--test', action='store_true', help='仅测试窗口标题')
+    parser.add_argument('--run-in-platform', action='store_true', help='平台模式下跳过控制台输出和输入提示')
     
     args = parser.parse_args()
     
     # 如果没有提供planNum，则提示用户输入
     if args.planNum is None:
-        planNum = input("请输入方案数量(planNum): ")
+        planNum = platform_input("请输入方案数量(planNum): ", run_in_platform=args.run_in_platform)
         planNum = int(planNum)
     else:
         planNum = args.planNum
     
     # 运行模拟
-    run_all_simulations(planNum, args.exe_dir, args.test)
+    run_all_simulations(planNum, args.exe_dir, args.test, args.run_in_platform)

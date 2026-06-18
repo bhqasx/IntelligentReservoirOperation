@@ -4,6 +4,9 @@ import json
 import random
 import copy
 import shutil
+import threading
+import time
+from contextlib import contextmanager
 import numpy as np
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from run_simulation import run_all_simulations
@@ -275,6 +278,42 @@ def update_plot(fig, ax1, ax2, obj, constraint_violation, generation):
 
     fig.canvas.draw_idle()  # 使用非阻塞绘制
     fig.canvas.flush_events()  # 刷新事件队列，确保GUI响应
+
+
+def start_progress_spinner(progress_text, interval=0.2):
+    stop_event = threading.Event()
+    symbols = ['|', '/', '-', '\\']
+
+    def spin():
+        index = 0
+        while not stop_event.is_set():
+            symbol = symbols[index % len(symbols)]
+            print(f"\r{progress_text} {symbol}", end='', flush=True)
+            index += 1
+            time.sleep(interval)
+
+    spinner_thread = threading.Thread(target=spin, daemon=True)
+    spinner_thread.start()
+    return stop_event, spinner_thread
+
+
+def stop_progress_spinner(stop_event, spinner_thread, progress_text):
+    stop_event.set()
+    spinner_thread.join()
+    print(f"\r{progress_text} 完成")
+
+
+@contextmanager
+def progress_spinner(progress_text=None, enabled=False, interval=0.2):
+    if not enabled:
+        yield
+        return
+
+    stop_event, spinner_thread = start_progress_spinner(progress_text, interval=interval)
+    try:
+        yield
+    finally:
+        stop_progress_spinner(stop_event, spinner_thread, progress_text)
 
 # 读取文件XLD_keypoints.json和SMX_keypoints.json，如果这两个文件不initial_plan_folder或当前目录下，则从上一级目录中寻找
 # 找到后，将数据分别存入XLD_KeyP和SMX_KeyP
@@ -577,6 +616,14 @@ except FileNotFoundError:
 except json.JSONDecodeError as e:
     print(f"Error decoding JSON: {e}")
 
+run_in_platform = str(case_config.get('run_in_platform', '')).strip() == '1'
+
+max_gen = case_config.get('max_gen', 200)
+if max_gen in ('', None):
+    max_gen = 200
+else:
+    max_gen = int(max_gen)
+
 if StartMode == 1:
     # 调用函数生成初始方案
     XLD_Plan, SMX_Plan, iniVol_XLD, iniVol_SMX, planNum = generate_ini_plans()
@@ -650,7 +697,12 @@ if StartMode != 3:
             json.dump(data, f, indent=2)
 
     # 运行所有模拟并获取case数据
-    case, case_status = run_all_simulations(planNum, exe_directory, test=False)
+    if run_in_platform:
+        initial_progress_text = f"计算进度: 0.00% (0/{max_gen}) 初始化模拟"
+        with progress_spinner(initial_progress_text, enabled=True):
+            case, case_status = run_all_simulations(planNum, exe_directory, test=False, run_in_platform=run_in_platform)
+    else:
+        case, case_status = run_all_simulations(planNum, exe_directory, test=False, run_in_platform=run_in_platform)
     case_serializable = convert_numpy_to_list(case)
     # 将case中的数据保存为名为PopHistory_Gen{代数}.json的文件
     generation = 1  # 当前代数
@@ -729,205 +781,208 @@ from nsga3_utils import normalize_objectives
 fig, ax1, ax2 = setup_plot()
 update_plot(fig, ax1, ax2, obj, ConstraintViolation, generation)
 
-max_gen = case_config.get('max_gen', 200)
-if max_gen in ('', None):
-    max_gen = 200
-else:
-    max_gen = int(max_gen)
-    
 while generation <= max_gen:
-    print(f"第{generation}代")
+    if run_in_platform:
+        progress = generation / max_gen * 100 if max_gen else 100
+        progress_text = f"计算进度: {progress:.2f}% ({generation}/{max_gen})"
+    else:
+        progress_text = None
+        print(f"第{generation}代")
 
-    Q_plans_SMX, Q_plans_XLD = generate_offspring(P_plans_SMX, P_plans_XLD, ConstraintViolation)
+    with progress_spinner(progress_text, enabled=run_in_platform):
+        Q_plans_SMX, Q_plans_XLD = generate_offspring(P_plans_SMX, P_plans_XLD, ConstraintViolation)
 
-    # ------------------------------评估子代--------------------------------
-    for i in range(planNum):
-        file_path = os.path.join(exe_directory, f"case{i+1}", "Input", "ReservoirOutQ.json")
-        with open(file_path, 'r') as f:
-            data = json.load(f)
+        # ------------------------------评估子代--------------------------------
+        for i in range(planNum):
+            file_path = os.path.join(exe_directory, f"case{i+1}", "Input", "ReservoirOutQ.json")
+            with open(file_path, 'r') as f:
+                data = json.load(f)
 
-        for resv in data['Resv']:
-            if resv['RhId'] == 1:
-                resv['t'] = Q_plans_SMX[i]['t']
-                resv['Q'] = Q_plans_SMX[i]['q']
-                resv['numTQ'] = len(Q_plans_SMX[i]['t'])
-            elif resv['RhId'] == 2:
-                resv['t'] = Q_plans_XLD[i]['t']
-                resv['Q'] = Q_plans_XLD[i]['q']
-                resv['numTQ'] = len(Q_plans_XLD[i]['t'])
+            for resv in data['Resv']:
+                if resv['RhId'] == 1:
+                    resv['t'] = Q_plans_SMX[i]['t']
+                    resv['Q'] = Q_plans_SMX[i]['q']
+                    resv['numTQ'] = len(Q_plans_SMX[i]['t'])
+                elif resv['RhId'] == 2:
+                    resv['t'] = Q_plans_XLD[i]['t']
+                    resv['Q'] = Q_plans_XLD[i]['q']
+                    resv['numTQ'] = len(Q_plans_XLD[i]['t'])
 
-        with open(file_path, 'w') as f:
-            json.dump(data, f, indent=2)
+            with open(file_path, 'w') as f:
+                json.dump(data, f, indent=2)
 
-    # 运行数值模拟
-    case, case_status = run_all_simulations(planNum, exe_directory, test=False)
+        # 运行数值模拟
+        case, case_status = run_all_simulations(planNum, exe_directory, test=False, run_in_platform=run_in_platform)
 
-    # 初始化子代的目标函数值和约束违反矩阵
-    Q_obj = np.zeros((planNum, 3))
-    Q_ConstraintViolation = np.zeros((planNum, 3))
+        # 初始化子代的目标函数值和约束违反矩阵
+        Q_obj = np.zeros((planNum, 3))
+        Q_ConstraintViolation = np.zeros((planNum, 3))
 
-    # 记录目标函数值并计算违约值
-    for i in range(planNum):
-        try:
-            Q_obj[i, 0] = -case[i+1][1]["QsDiff"]  #冲淤目标转换成求最小值
-        except (KeyError, IndexError):
-            Q_obj[i, 0] = np.nan
-        try:
-            Q_obj[i, 1] = -case[i+1][2]["QsDiff"]
-        except (KeyError, IndexError):
-            Q_obj[i, 1] = np.nan
-        try:
-            Q_obj[i, 2] = case[i+1][3]["Obj_flood"]
-        except (KeyError, IndexError):
-            Q_obj[i, 2] = np.nan
+        # 记录目标函数值并计算违约值
+        for i in range(planNum):
+            try:
+                Q_obj[i, 0] = -case[i+1][1]["QsDiff"]  #冲淤目标转换成求最小值
+            except (KeyError, IndexError):
+                Q_obj[i, 0] = np.nan
+            try:
+                Q_obj[i, 1] = -case[i+1][2]["QsDiff"]
+            except (KeyError, IndexError):
+                Q_obj[i, 1] = np.nan
+            try:
+                Q_obj[i, 2] = case[i+1][3]["Obj_flood"]
+            except (KeyError, IndexError):
+                Q_obj[i, 2] = np.nan
 
-        if case_status[i] == 0:
-            Q_ConstraintViolation[i, 2] = 1
-            Q_ConstraintViolation[i, 0] = 1
-            Q_ConstraintViolation[i, 1] = 1
-        else:
-            Q_ConstraintViolation[i, 2] = 0
-        
-            # 三门峡是等式约束
-            Q_ConstraintViolation[i, 0] = abs(case[i+1][1]["Zend_lastCS"]/SMX_HyperPara['WlFldContr']-1)
-            # 小浪底是不等式约束
-            Zend_XLD = case[i+1][2]["Zend_lastCS"]
-            VolEnd_XLD = interpolate(Zend_XLD, XLD_CapCurve['WL'], XLD_CapCurve['Vol'])
-            Q_ConstraintViolation[i, 1] = VolEnd_XLD/XLD_HyperPara['volWatSupply']-1
-            if Q_ConstraintViolation[i, 1] > 0:
-                Q_ConstraintViolation[i, 1] = 0
+            if case_status[i] == 0:
+                Q_ConstraintViolation[i, 2] = 1
+                Q_ConstraintViolation[i, 0] = 1
+                Q_ConstraintViolation[i, 1] = 1
             else:
-                Q_ConstraintViolation[i,1]=-Q_ConstraintViolation[i,1]
+                Q_ConstraintViolation[i, 2] = 0
+            
+                # 三门峡是等式约束
+                Q_ConstraintViolation[i, 0] = abs(case[i+1][1]["Zend_lastCS"]/SMX_HyperPara['WlFldContr']-1)
+                # 小浪底是不等式约束
+                Zend_XLD = case[i+1][2]["Zend_lastCS"]
+                VolEnd_XLD = interpolate(Zend_XLD, XLD_CapCurve['WL'], XLD_CapCurve['Vol'])
+                Q_ConstraintViolation[i, 1] = VolEnd_XLD/XLD_HyperPara['volWatSupply']-1
+                if Q_ConstraintViolation[i, 1] > 0:
+                    Q_ConstraintViolation[i, 1] = 0
+                else:
+                    Q_ConstraintViolation[i,1]=-Q_ConstraintViolation[i,1]
 
-    # 合并父代和子代
-    R_plans_SMX = P_plans_SMX + Q_plans_SMX
-    R_plans_XLD = P_plans_XLD + Q_plans_XLD
-    
-    # 合并父代和子代的目标函数值
-    R_obj = np.vstack([obj, Q_obj])
-    R_ConstraintViolation = np.vstack([ConstraintViolation, Q_ConstraintViolation])
-
-    # 执行有约束的非支配排序
-    from nsga3_utils import constrained_non_dominated_sorting
-    fronts, ranks = constrained_non_dominated_sorting(R_obj, R_ConstraintViolation)
-    print(f"非支配排序完成，共{len(fronts)}个前沿")
-    for i, front in enumerate(fronts):
-        print(f"前沿{i}: {len(front)}个解")
-
-    # 将各层前沿加入S_plans，构建下一代种群
-    S_plans_SMX = []
-    S_plans_XLD = []
-    S_indices = []  # 记录选中解的原始索引
-    remaining_slots = 0
-    last_front = []
-    
-    for front in fronts:
-        # 检查当前前沿是否可以完全加入
-        if len(S_indices) + len(front) <= planNum:
-            # 完全加入当前前沿
-            S_indices.extend(front)
-        else:
-            # 当前前沿不能完全加入，记录为最后一个前沿
-            remaining_slots = planNum - len(S_indices)
-            last_front = front
-            break  # 达到种群大小限制，终止前沿遍历
-    
-    # 从已经完全加入的前沿中构建部分新种群
-    for idx in S_indices:
-        S_plans_SMX.append(R_plans_SMX[idx])
-        S_plans_XLD.append(R_plans_XLD[idx])
-
-    # 如果需要从最后一个前沿选择
-    if remaining_slots > 0:
-        print(f"需要从最后一个前沿中选择{remaining_slots}个解")
+        # 合并父代和子代
+        R_plans_SMX = P_plans_SMX + Q_plans_SMX
+        R_plans_XLD = P_plans_XLD + Q_plans_XLD
         
-        # 检查最后一个前沿是否全为非可行解
-        last_front_cv = R_ConstraintViolation[last_front]
-        is_all_infeasible = np.all(np.sum(last_front_cv, axis=1) > 1e-6)
+        # 合并父代和子代的目标函数值
+        R_obj = np.vstack([obj, Q_obj])
+        R_ConstraintViolation = np.vstack([ConstraintViolation, Q_ConstraintViolation])
 
-        if is_all_infeasible:
-            print("最后一个前沿均为非可行解，按约束违反度排序选择。")
-            # 按约束违反度升序排序
-            cv_sums = np.sum(last_front_cv, axis=1)
-            sorted_indices = np.argsort(cv_sums)
-            
-            # 选择约束违反度最小的 remaining_slots 个解
-            selected_from_last_front = [last_front[i] for i in sorted_indices[:remaining_slots]]
-        else:
-            # 组合S和Fl中的个体，用于计算理想点和标准化
-            s_union_fl_indices = S_indices + last_front
-            s_union_fl_obj = R_obj[s_union_fl_indices]
-            
-            # 1. 计算理想点和nadir点，nadir点是对极值点的近似，原nsga3论文中没有
-            ideal_point = np.min(s_union_fl_obj, axis=0)
-            nadir_point = np.max(s_union_fl_obj, axis=0)
-            print(f"用于标准化的理想点: {ideal_point}")
-            
-            # 2. 标准化 s_union_fl_obj
-            obj_normalized, _, _ = normalize_objectives(s_union_fl_obj, ideal_point, nadir_point, verbose=False)
-            
-            # 3. 关联参考点并执行小生境选择
-            selected_from_last_front = niching_selection(
-                obj_normalized, last_front, S_indices, reference_points, remaining_slots
-            )
+        # 执行有约束的非支配排序
+        from nsga3_utils import constrained_non_dominated_sorting
+        fronts, ranks = constrained_non_dominated_sorting(R_obj, R_ConstraintViolation)
+        if not run_in_platform:
+            print(f"非支配排序完成，共{len(fronts)}个前沿")
+            for i, front in enumerate(fronts):
+                print(f"前沿{i}: {len(front)}个解")
 
-        S_indices.extend(selected_from_last_front)
-        for idx in selected_from_last_front:
+        # 将各层前沿加入S_plans，构建下一代种群
+        S_plans_SMX = []
+        S_plans_XLD = []
+        S_indices = []  # 记录选中解的原始索引
+        remaining_slots = 0
+        last_front = []
+        
+        for front in fronts:
+            # 检查当前前沿是否可以完全加入
+            if len(S_indices) + len(front) <= planNum:
+                # 完全加入当前前沿
+                S_indices.extend(front)
+            else:
+                # 当前前沿不能完全加入，记录为最后一个前沿
+                remaining_slots = planNum - len(S_indices)
+                last_front = front
+                break  # 达到种群大小限制，终止前沿遍历
+        
+        # 从已经完全加入的前沿中构建部分新种群
+        for idx in S_indices:
             S_plans_SMX.append(R_plans_SMX[idx])
             S_plans_XLD.append(R_plans_XLD[idx])
 
-    print(f"选择了{len(S_indices)}个解进入下一代")
+        # 如果需要从最后一个前沿选择
+        if remaining_slots > 0:
+            if not run_in_platform:
+                print(f"需要从最后一个前沿中选择{remaining_slots}个解")
+            
+            # 检查最后一个前沿是否全为非可行解
+            last_front_cv = R_ConstraintViolation[last_front]
+            is_all_infeasible = np.all(np.sum(last_front_cv, axis=1) > 1e-6)
 
-    # 更新父代种群为选中的解
-    P_plans_SMX = S_plans_SMX
-    P_plans_XLD = S_plans_XLD
-    
-    # 更新目标函数值和约束违反度
-    obj = R_obj[S_indices]
-    ConstraintViolation = R_ConstraintViolation[S_indices]
-
-    # 记录新的父代中个体的帕累托前沿等级
-    pareto_ranks = [ranks[idx] for idx in S_indices]
-
-    # 在循环结束前增加generation计数
-    generation += 1
-
-    # 更新绘图
-    update_plot(fig, ax1, ax2, obj, ConstraintViolation, generation)
-
-    # 读取现有历史数据，并追加新一代数据
-    try:
-        with open('PopHistory.json', 'r') as f:
-            history_data = json.load(f)
-    except (FileNotFoundError, json.JSONDecodeError):
-        history_data = {'generations': {}}
-    
-    generation_data = {
-        'P_plans_SMX': P_plans_SMX,
-        'P_plans_XLD': P_plans_XLD,
-        'obj': convert_numpy_to_list(obj),
-        'ConstraintViolation': convert_numpy_to_list(ConstraintViolation),
-        'pareto_ranks': convert_numpy_to_list(pareto_ranks)  # 添加帕累托前沿等级记录
-    }
-    history_data['generations'][str(generation)] = generation_data
-    
-    with open('PopHistory.json', 'w') as f:
-        json.dump(history_data, f, indent=2)
-
-    # 检查是否达到最大代数，并询问用户是否继续
-    if generation > max_gen:
-        if str(case_config.get('run_in_platform', '')).strip() == '1':
-            print(f"已达到最大代数 ({max_gen})。平台模式下自动结束。")
-        else:
-            new_max_gen_str = input(f"已达到最大代数 ({max_gen})。输入新的最大代数以继续，或按 Enter 键退出: ")
-            if new_max_gen_str.isdigit():
-                new_max_gen = int(new_max_gen_str)
-                if new_max_gen > max_gen:
-                    max_gen = new_max_gen
-                    print(f"优化将继续，直到第 {max_gen} 代。")
-                else:
-                    print(f"新数值 ({new_max_gen}) 不大于当前最大代数 ({max_gen})。正在退出。")
+            if is_all_infeasible:
+                if not run_in_platform:
+                    print("最后一个前沿均为非可行解，按约束违反度排序选择。")
+                # 按约束违反度升序排序
+                cv_sums = np.sum(last_front_cv, axis=1)
+                sorted_indices = np.argsort(cv_sums)
+                
+                # 选择约束违反度最小的 remaining_slots 个解
+                selected_from_last_front = [last_front[i] for i in sorted_indices[:remaining_slots]]
             else:
-                print("正在退出优化。")
+                # 组合S和Fl中的个体，用于计算理想点和标准化
+                s_union_fl_indices = S_indices + last_front
+                s_union_fl_obj = R_obj[s_union_fl_indices]
+                
+                # 1. 计算理想点和nadir点，nadir点是对极值点的近似，原nsga3论文中没有
+                ideal_point = np.min(s_union_fl_obj, axis=0)
+                nadir_point = np.max(s_union_fl_obj, axis=0)
+                if not run_in_platform:
+                    print(f"用于标准化的理想点: {ideal_point}")
+                
+                # 2. 标准化 s_union_fl_obj
+                obj_normalized, _, _ = normalize_objectives(s_union_fl_obj, ideal_point, nadir_point, verbose=False)
+                
+                # 3. 关联参考点并执行小生境选择
+                selected_from_last_front = niching_selection(
+                    obj_normalized, last_front, S_indices, reference_points, remaining_slots
+                )
+
+            S_indices.extend(selected_from_last_front)
+            for idx in selected_from_last_front:
+                S_plans_SMX.append(R_plans_SMX[idx])
+                S_plans_XLD.append(R_plans_XLD[idx])
+
+        if not run_in_platform:
+            print(f"选择了{len(S_indices)}个解进入下一代")
+
+        # 更新父代种群为选中的解
+        P_plans_SMX = S_plans_SMX
+        P_plans_XLD = S_plans_XLD
+        
+        # 更新目标函数值和约束违反度
+        obj = R_obj[S_indices]
+        ConstraintViolation = R_ConstraintViolation[S_indices]
+
+        # 记录新的父代中个体的帕累托前沿等级
+        pareto_ranks = [ranks[idx] for idx in S_indices]
+
+        # 在循环结束前增加generation计数
+        generation += 1
+
+        # 更新绘图
+        update_plot(fig, ax1, ax2, obj, ConstraintViolation, generation)
+
+        # 读取现有历史数据，并追加新一代数据
+        try:
+            with open('PopHistory.json', 'r') as f:
+                history_data = json.load(f)
+        except (FileNotFoundError, json.JSONDecodeError):
+            history_data = {'generations': {}}
+        
+        generation_data = {
+            'P_plans_SMX': P_plans_SMX,
+            'P_plans_XLD': P_plans_XLD,
+            'obj': convert_numpy_to_list(obj),
+            'ConstraintViolation': convert_numpy_to_list(ConstraintViolation),
+            'pareto_ranks': convert_numpy_to_list(pareto_ranks)  # 添加帕累托前沿等级记录
+        }
+        history_data['generations'][str(generation)] = generation_data
+        
+        with open('PopHistory.json', 'w') as f:
+            json.dump(history_data, f, indent=2)
+
+        # 检查是否达到最大代数，并询问用户是否继续
+        if generation > max_gen:
+            if not run_in_platform:
+                new_max_gen_str = input(f"已达到最大代数 ({max_gen})。输入新的最大代数以继续，或按 Enter 键退出: ")
+                if new_max_gen_str.isdigit():
+                    new_max_gen = int(new_max_gen_str)
+                    if new_max_gen > max_gen:
+                        max_gen = new_max_gen
+                        print(f"优化将继续，直到第 {max_gen} 代。")
+                    else:
+                        print(f"新数值 ({new_max_gen}) 不大于当前最大代数 ({max_gen})。正在退出。")
+                else:
+                    print("正在退出优化。")
 
 print("success计算完成")
