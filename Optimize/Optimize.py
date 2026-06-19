@@ -6,6 +6,7 @@ import copy
 import shutil
 import threading
 import time
+import sys
 from contextlib import contextmanager
 import numpy as np
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -39,18 +40,31 @@ def sanitize_path_text(value):
         0x2069: None,
     }).strip()
 
-# 选择初始方案文件夹
-root = tk.Tk()
-root.withdraw()
-print("请选择初始方案文件夹...")
-initial_plan_folder = filedialog.askdirectory(title="请选择初始方案文件夹")
-root.destroy()
+def resolve_initial_plan_folder():
+    if len(sys.argv) > 1:
+        case_name = sanitize_path_text(sys.argv[1])
+        repo_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        case_folder = os.path.join(repo_root, 'Cases', case_name)
+        if not os.path.isdir(case_folder):
+            raise FileNotFoundError(f"未找到案例目录: {case_folder}")
+        print(f"使用命令行案例目录: {case_folder}")
+        return case_folder
 
-if not initial_plan_folder:
-    print("未选择初始方案文件夹，将使用当前工作目录。")
-    initial_plan_folder = os.getcwd() 
-else:
-    print(f"初始方案文件夹: {initial_plan_folder}")
+    root = tk.Tk()
+    root.withdraw()
+    print("请选择初始方案文件夹...")
+    initial_folder = filedialog.askdirectory(title="请选择初始方案文件夹")
+    root.destroy()
+
+    if not initial_folder:
+        print("未选择初始方案文件夹，将使用当前工作目录。")
+        return os.getcwd()
+
+    print(f"初始方案文件夹: {initial_folder}")
+    return initial_folder
+
+
+initial_plan_folder = resolve_initial_plan_folder()
 
 global SMX_t_in, SMX_q_in, SMX_HyperPara, SMX_CapCurve, iniVol_SMX
 
