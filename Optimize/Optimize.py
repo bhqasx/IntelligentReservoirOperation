@@ -65,6 +65,11 @@ def resolve_initial_plan_folder():
 
 
 initial_plan_folder = resolve_initial_plan_folder()
+pop_history_path = os.path.join(initial_plan_folder, 'PopHistory.json')
+
+
+def get_pop_history_gen_path(generation):
+    return os.path.join(initial_plan_folder, f'PopHistory_Gen{generation}.json')
 
 global SMX_t_in, SMX_q_in, SMX_HyperPara, SMX_CapCurve, iniVol_SMX
 
@@ -654,7 +659,7 @@ elif StartMode == 3:
     generation = int(generation_to_load)
 
     # 从PopHistory.json中读取指定代数的数据
-    with open('PopHistory.json', 'r') as f:
+    with open(pop_history_path, 'r') as f:
         data = json.load(f)
         generation_data = data['generations'][generation_to_load]
         XLD_Plan = generation_data['P_plans_XLD']
@@ -720,7 +725,7 @@ if StartMode != 3:
     case_serializable = convert_numpy_to_list(case)
     # 将case中的数据保存为名为PopHistory_Gen{代数}.json的文件
     generation = 1  # 当前代数
-    filename = f'PopHistory_Gen{generation}.json'
+    filename = get_pop_history_gen_path(generation)
     with open(filename, 'w') as f:
         json.dump({'i_gen': generation, 'case': case_serializable}, f, indent=2)
 
@@ -785,7 +790,7 @@ generation_data = {
     'pareto_ranks': []  # 第1代尚未进行非支配排序，记录为空列表
 }
 history_data['generations'][str(generation)] = generation_data
-with open('PopHistory.json', 'w') as f:
+with open(pop_history_path, 'w') as f:
     json.dump(history_data, f, indent=2)
 
 # 导入NSGA-III工具函数
@@ -968,7 +973,7 @@ while generation <= max_gen:
 
         # 读取现有历史数据，并追加新一代数据
         try:
-            with open('PopHistory.json', 'r') as f:
+            with open(pop_history_path, 'r') as f:
                 history_data = json.load(f)
         except (FileNotFoundError, json.JSONDecodeError):
             history_data = {'generations': {}}
@@ -982,7 +987,7 @@ while generation <= max_gen:
         }
         history_data['generations'][str(generation)] = generation_data
         
-        with open('PopHistory.json', 'w') as f:
+        with open(pop_history_path, 'w') as f:
             json.dump(history_data, f, indent=2)
 
         # 检查是否达到最大代数，并询问用户是否继续
