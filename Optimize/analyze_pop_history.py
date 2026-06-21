@@ -53,7 +53,7 @@ def load_pop_history(filename='PopHistory.json'):
                 manual_dir = input("未选择目录，请手动输入包含 PopHistory.json 的目录: ").strip()
                 if not manual_dir:
                     print("错误：未选择目录")
-                    return None, None
+                    return None, None, None
                 target_path = os.path.join(manual_dir, filename)
             else:
                 target_path = os.path.join(selected_dir, filename)
@@ -72,17 +72,80 @@ def load_pop_history(filename='PopHistory.json'):
         print(f"每代有 {len(history_data['generations'][str(generations[0])]['obj'])} 个个体")
         print(f"每个个体有 {len(history_data['generations'][str(generations[0])]['obj'][0])} 个目标函数")
 
-        return history_data, generations
+        return history_data, generations, target_path
 
     except FileNotFoundError:
         print(f"错误：找不到文件 {target_path}")
-        return None, None
+        return None, None, None
     except json.JSONDecodeError as e:
         print(f"错误：JSON文件格式错误 - {e}")
-        return None, None
+        return None, None, None
     except Exception as e:
         print(f"错误：读取文件时发生未知错误 - {e}")
-        return None, None
+        return None, None, None
+
+def export_typical_plans(history_data, generations, target_path):
+    """
+    从最后一代中导出典型个体的调度方案
+
+    Parameters:
+    history_data: 历史数据字典
+    generations: 代数列表
+    target_path: PopHistory.json 的完整路径
+    """
+    last_gen_key = str(generations[-1])
+    last_gen_data = history_data['generations'][last_gen_key]
+    last_gen_obj = np.array(last_gen_data['obj'])
+
+    # 对最后一代目标函数做正则化：(value - max) / (min - max)
+    last_gen_obj_min = np.min(last_gen_obj, axis=0)
+    last_gen_obj_max = np.max(last_gen_obj, axis=0)
+    last_gen_obj_range = last_gen_obj_min - last_gen_obj_max
+    last_gen_obj_normalized = np.divide(
+        last_gen_obj - last_gen_obj_max,
+        last_gen_obj_range,
+        out=np.zeros_like(last_gen_obj, dtype=float),
+        where=last_gen_obj_range != 0
+    )
+
+    # 计算最终代每个个体的 Coupling Coordination Degree (CCD) 指标
+    T = np.mean(last_gen_obj_normalized, axis=1)
+    C = 3 * np.power(np.prod(last_gen_obj_normalized, axis=1), 1 / 3)
+    CCD = np.power(T * C, 1 / 2)
+
+    id_Min_SMX = int(np.argmin(last_gen_obj[:, 0]))
+    id_Min_XLD = int(np.argmin(last_gen_obj[:, 1]))
+    id_Max_CCD = int(np.argmax(CCD))
+
+    def build_plan_entry(plan_name, individual_id):
+        return {
+            'PlanName': plan_name,
+            'Plan_SMX': {
+                't': last_gen_data['P_plans_SMX'][individual_id]['t'],
+                'q': last_gen_data['P_plans_SMX'][individual_id]['q']
+            },
+            'Plan_XLD': {
+                't': last_gen_data['P_plans_XLD'][individual_id]['t'],
+                'q': last_gen_data['P_plans_XLD'][individual_id]['q']
+            }
+        }
+
+    typical_plans_data = {
+        'Typical_Plans': [
+            build_plan_entry('Min_SMX', id_Min_SMX),
+            build_plan_entry('Min_XLD', id_Min_XLD),
+            build_plan_entry('Max_CCD', id_Max_CCD)
+        ]
+    }
+
+    output_path = os.path.join(os.path.dirname(target_path), 'Typical_Plans.json')
+    with open(output_path, 'w', encoding='utf-8') as f:
+        json.dump(typical_plans_data, f, ensure_ascii=False, indent=2)
+
+    print(f"已输出 Typical_Plans.json：{output_path}")
+    print(f"最后一代目标函数1最小个体序号 id_Min_SMX = {id_Min_SMX}")
+    print(f"最后一代目标函数2最小个体序号 id_Min_XLD = {id_Min_XLD}")
+    print(f"最后一代CCD最大个体序号 id_Max_CCD = {id_Max_CCD}")
 
 def extract_objectives_by_generation(history_data, generations):
     """
@@ -615,7 +678,7 @@ def main():
     主函数
     """
     # 读取数据
-    history_data, generations = load_pop_history()
+    history_data, generations, target_path = load_pop_history()
 
     if history_data is None:
         return
@@ -644,6 +707,8 @@ def main():
     plt.show(block=True)
 
     create_3d_layers(obj_by_gen, generations, history_data)
+
+    export_typical_plans(history_data, generations, target_path)
 
     # 绘制基因演化过程
     plot_gene_evolution(history_data, generations)
