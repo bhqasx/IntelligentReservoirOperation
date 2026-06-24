@@ -11,16 +11,55 @@ PopHistory.json 数据分析和可视化工具
 
 import json
 import os
+import sys
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib
 matplotlib.use('TkAgg')  # 使用支持交互的后端
 from mpl_toolkits.mplot3d import Axes3D
-import mplcursors
-from scipy.spatial import ConvexHull
+try:
+    import mplcursors
+except ImportError:
+    mplcursors = None
+
+try:
+    from scipy.spatial import ConvexHull
+except ImportError:
+    ConvexHull = None
 import tkinter as tk
 from tkinter import filedialog
 from tkinter import simpledialog
+
+
+def sanitize_path_text(value):
+    if not isinstance(value, str):
+        return value
+    return value.translate({
+        0x202A: None,
+        0x202B: None,
+        0x202C: None,
+        0x202D: None,
+        0x202E: None,
+        0x2066: None,
+        0x2067: None,
+        0x2068: None,
+        0x2069: None,
+    }).strip()
+
+
+def resolve_pop_history_path(filename='PopHistory.json'):
+    if len(sys.argv) > 1:
+        case_name = sanitize_path_text(sys.argv[1])
+        repo_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        case_folder = os.path.join(repo_root, 'Cases', case_name)
+        if not os.path.isdir(case_folder):
+            raise FileNotFoundError(f"未找到案例目录: {case_folder}")
+
+        target_path = os.path.join(case_folder, filename)
+        print(f"使用命令行案例目录: {case_folder}")
+        return target_path
+
+    return filename
 
 def load_pop_history(filename='PopHistory.json'):
     """
@@ -33,7 +72,30 @@ def load_pop_history(filename='PopHistory.json'):
     history_data: 包含所有代数数据的字典
     generations: 代数列表（排序后的）
     """
-    target_path = filename
+    target_path = resolve_pop_history_path(filename)
+    if target_path != filename:
+        try:
+            with open(target_path, 'r', encoding='utf-8') as f:
+                history_data = json.load(f)
+
+            generations = sorted([int(gen) for gen in history_data['generations'].keys()])
+
+            print(f"成功读取PopHistory.json文件")
+            print(f"包含 {len(generations)} 代数据：第 {generations[0]} 代到第 {generations[-1]} 代")
+            print(f"每代有 {len(history_data['generations'][str(generations[0])]['obj'])} 个个体")
+            print(f"每个个体有 {len(history_data['generations'][str(generations[0])]['obj'][0])} 个目标函数")
+
+            return history_data, generations, target_path
+        except FileNotFoundError:
+            print(f"错误：找不到文件 {target_path}")
+            return None, None, None
+        except json.JSONDecodeError as e:
+            print(f"错误：JSON文件格式错误 - {e}")
+            return None, None, None
+        except Exception as e:
+            print(f"错误：读取文件时发生未知错误 - {e}")
+            return None, None, None
+
     while True:
         answer = input("PopHistory.json 是否在当前目录？(Y/N): ").strip().lower()
         if answer in ('y', ''):
@@ -225,6 +287,21 @@ def _enable_text_editing(fig, axes):
 
     fig.canvas.mpl_connect("pick_event", _on_pick)
 
+
+def _attach_hover_cursor(artists, annotation_builder):
+    if mplcursors is None:
+        return
+
+    cursor = mplcursors.cursor(artists, hover=True)
+
+    @cursor.connect("add")
+    def _on_add(sel):
+        sel.annotation.set_text(annotation_builder(sel))
+
+    @cursor.connect("remove")
+    def _on_remove(sel):
+        sel.annotation.set_visible(False)
+
 def create_comparison_plots(obj_by_gen, con_by_gen, generations):
     """
     创建五个子图的对比分析
@@ -258,16 +335,11 @@ def create_comparison_plots(obj_by_gen, con_by_gen, generations):
     ax1.grid(True, alpha=0.3)
 
     # 添加鼠标悬停显示个体编号
-    cursor1 = mplcursors.cursor([sc1_1, sc1_2], hover=True)
-    @cursor1.connect("add")
-    def on_add1(sel):
+    def build_annotation1(sel):
         if sel.artist == sc1_1:
-            sel.annotation.set_text(f'Gen {generations[0]} Individual {sel.index}')
-        elif sel.artist == sc1_2:
-            sel.annotation.set_text(f'Gen {generations[-1]} Individual {sel.index}')
-    @cursor1.connect("remove")
-    def on_remove1(sel):
-        sel.annotation.set_visible(False)
+            return f'Gen {generations[0]} Individual {sel.index}'
+        return f'Gen {generations[-1]} Individual {sel.index}'
+    _attach_hover_cursor([sc1_1, sc1_2], build_annotation1)
 
     # 子图2：第1、3目标函数对比
     ax2 = axes[0, 1]
@@ -281,16 +353,11 @@ def create_comparison_plots(obj_by_gen, con_by_gen, generations):
     ax2.grid(True, alpha=0.3)
 
     # 添加鼠标悬停显示个体编号
-    cursor2 = mplcursors.cursor([sc2_1, sc2_2], hover=True)
-    @cursor2.connect("add")
-    def on_add2(sel):
+    def build_annotation2(sel):
         if sel.artist == sc2_1:
-            sel.annotation.set_text(f'Gen {generations[0]} Individual {sel.index}')
-        elif sel.artist == sc2_2:
-            sel.annotation.set_text(f'Gen {generations[-1]} Individual {sel.index}')
-    @cursor2.connect("remove")
-    def on_remove2(sel):
-        sel.annotation.set_visible(False)
+            return f'Gen {generations[0]} Individual {sel.index}'
+        return f'Gen {generations[-1]} Individual {sel.index}'
+    _attach_hover_cursor([sc2_1, sc2_2], build_annotation2)
 
     # 子图3：第2、3目标函数对比
     ax3 = axes[1, 0]
@@ -304,16 +371,11 @@ def create_comparison_plots(obj_by_gen, con_by_gen, generations):
     ax3.grid(True, alpha=0.3)
 
     # 添加鼠标悬停显示个体编号
-    cursor3 = mplcursors.cursor([sc3_1, sc3_2], hover=True)
-    @cursor3.connect("add")
-    def on_add3(sel):
+    def build_annotation3(sel):
         if sel.artist == sc3_1:
-            sel.annotation.set_text(f'Gen {generations[0]} Individual {sel.index}')
-        elif sel.artist == sc3_2:
-            sel.annotation.set_text(f'Gen {generations[-1]} Individual {sel.index}')
-    @cursor3.connect("remove")
-    def on_remove3(sel):
-        sel.annotation.set_visible(False)
+            return f'Gen {generations[0]} Individual {sel.index}'
+        return f'Gen {generations[-1]} Individual {sel.index}'
+    _attach_hover_cursor([sc3_1, sc3_2], build_annotation3)
 
     # 子图4：目标函数平均值随代数变化趋势
     ax4 = axes[1, 1]
@@ -399,6 +461,11 @@ def create_3d_plot(obj_by_gen, generations):
     #            c='red', alpha=0.7, label=f'Gen {generations[-1]}', marker='s')
 
     ys_create_surf=0
+    if ys_create_surf:
+        if ConvexHull is None:
+            print("警告：未安装 scipy，跳过 3D 凸包表面绘制。")
+            ys_create_surf = 0
+
     if ys_create_surf:
         # 计算并绘制第一代的凸包表面
         hull1 = ConvexHull(first_gen_data)
