@@ -177,6 +177,7 @@ def export_typical_plans(history_data, generations, target_path):
 
     id_Min_SMX = int(np.argmin(last_gen_obj[:, 0]))
     id_Min_XLD = int(np.argmin(last_gen_obj[:, 1]))
+    id_Min_flood = int(np.argmin(last_gen_obj[:, 2]))
     id_Max_CCD = int(np.argmax(CCD))
 
     def build_plan_entry(plan_name, individual_id):
@@ -196,6 +197,7 @@ def export_typical_plans(history_data, generations, target_path):
         'Typical_Plans': [
             build_plan_entry('Min_SMX', id_Min_SMX),
             build_plan_entry('Min_XLD', id_Min_XLD),
+            build_plan_entry('Min_flood', id_Min_flood),
             build_plan_entry('Max_CCD', id_Max_CCD)
         ]
     }
@@ -207,6 +209,7 @@ def export_typical_plans(history_data, generations, target_path):
     print(f"已输出 Typical_Plans.json：{output_path}")
     print(f"最后一代目标函数1最小个体序号 id_Min_SMX = {id_Min_SMX}")
     print(f"最后一代目标函数2最小个体序号 id_Min_XLD = {id_Min_XLD}")
+    print(f"最后一代目标函数3最小个体序号 id_Min_flood = {id_Min_flood}")
     print(f"最后一代CCD最大个体序号 id_Max_CCD = {id_Max_CCD}")
 
 def extract_objectives_by_generation(history_data, generations):
