@@ -72,61 +72,40 @@ def load_pop_history(filename='PopHistory.json'):
     history_data: 包含所有代数数据的字典
     generations: 代数列表（排序后的）
     """
-    target_path = resolve_pop_history_path(filename)
-    if target_path != filename:
-        try:
-            with open(target_path, 'r', encoding='utf-8') as f:
-                history_data = json.load(f)
-
-            generations = sorted([int(gen) for gen in history_data['generations'].keys()])
-
-            print(f"成功读取PopHistory.json文件")
-            print(f"包含 {len(generations)} 代数据：第 {generations[0]} 代到第 {generations[-1]} 代")
-            print(f"每代有 {len(history_data['generations'][str(generations[0])]['obj'])} 个个体")
-            print(f"每个个体有 {len(history_data['generations'][str(generations[0])]['obj'][0])} 个目标函数")
-
-            return history_data, generations, target_path
-        except FileNotFoundError:
-            print(f"错误：找不到文件 {target_path}")
-            return None, None, None
-        except json.JSONDecodeError as e:
-            print(f"错误：JSON文件格式错误 - {e}")
-            return None, None, None
-        except Exception as e:
-            print(f"错误：读取文件时发生未知错误 - {e}")
-            return None, None, None
-
-    while True:
-        answer = input("PopHistory.json 是否在当前目录？(Y/N): ").strip().lower()
-        if answer in ('y', ''):
-            break
-        if answer == 'n':
-            root = tk.Tk()
-            root.withdraw()
-            root.attributes('-topmost', True)
-            root.update()
-            selected_dir = filedialog.askdirectory(
-                parent=root,
-                title='选择包含 PopHistory.json 的目录',
-                initialdir=os.getcwd()
-            )
-            root.destroy()
-            if not selected_dir:
-                manual_dir = input("未选择目录，请手动输入包含 PopHistory.json 的目录: ").strip()
-                if not manual_dir:
-                    print("错误：未选择目录")
-                    return None, None, None
-                target_path = os.path.join(manual_dir, filename)
-            else:
-                target_path = os.path.join(selected_dir, filename)
-            break
-        print("请输入 Y 或 N。")
-
     try:
+        target_path = resolve_pop_history_path(filename)
+        run_in_platform = load_run_in_platform(target_path, verbose=False)
+
+        if target_path == filename and run_in_platform != 1:
+            while True:
+                answer = input("PopHistory.json 是否在当前目录？(Y/N): ").strip().lower()
+                if answer in ('y', ''):
+                    break
+                if answer == 'n':
+                    root = tk.Tk()
+                    root.withdraw()
+                    root.attributes('-topmost', True)
+                    root.update()
+                    selected_dir = filedialog.askdirectory(
+                        parent=root,
+                        title='选择包含 PopHistory.json 的目录',
+                        initialdir=os.getcwd()
+                    )
+                    root.destroy()
+                    if not selected_dir:
+                        manual_dir = input("未选择目录，请手动输入包含 PopHistory.json 的目录: ").strip()
+                        if not manual_dir:
+                            print("错误：未选择目录")
+                            return None, None, None
+                        target_path = os.path.join(manual_dir, filename)
+                    else:
+                        target_path = os.path.join(selected_dir, filename)
+                    break
+                print("请输入 Y 或 N。")
+
         with open(target_path, 'r', encoding='utf-8') as f:
             history_data = json.load(f)
 
-        # 获取所有代数并排序
         generations = sorted([int(gen) for gen in history_data['generations'].keys()])
 
         print(f"成功读取PopHistory.json文件")
@@ -145,6 +124,31 @@ def load_pop_history(filename='PopHistory.json'):
     except Exception as e:
         print(f"错误：读取文件时发生未知错误 - {e}")
         return None, None, None
+
+
+def load_run_in_platform(target_path, filename='CaseConfig.json', verbose=True):
+    case_config_path = os.path.join(os.path.dirname(target_path), filename)
+
+    try:
+        with open(case_config_path, 'r', encoding='utf-8') as f:
+            case_config = json.load(f)
+
+        run_in_platform = case_config.get('run_in_platform', 0)
+        if verbose:
+            print(f"读取到 run_in_platform = {run_in_platform}")
+        return run_in_platform
+    except FileNotFoundError:
+        if verbose:
+            print(f"警告：找不到文件 {case_config_path}，run_in_platform 默认取 0")
+        return 0
+    except json.JSONDecodeError as e:
+        if verbose:
+            print(f"警告：CaseConfig.json 格式错误 - {e}，run_in_platform 默认取 0")
+        return 0
+    except Exception as e:
+        if verbose:
+            print(f"警告：读取 CaseConfig.json 时发生未知错误 - {e}，run_in_platform 默认取 0")
+        return 0
 
 def export_typical_plans(history_data, generations, target_path):
     """
@@ -751,6 +755,12 @@ def main():
     history_data, generations, target_path = load_pop_history()
 
     if history_data is None:
+        return
+
+    run_in_platform = load_run_in_platform(target_path)
+
+    if run_in_platform == 1:
+        export_typical_plans(history_data, generations, target_path)
         return
 
     # 提取目标函数数据

@@ -472,14 +472,14 @@ def generate_ini_plans():
     iniVol_SMX = interpolate(iniWL_SMX, xx, yy)
 
     # 设置方案数量
-    planNum = case_config.get('planNum')
+    planNum = nsga_config.get('planNum')
     if planNum in ('', None):
-        input("Error: 未在CaseConfig.json中读取到 planNum，按 Enter 键退出...")
-        raise ValueError("CaseConfig.json 缺少 planNum")
+        input("Error: 未在CaseConfig.json中读取到 Paras_nsga.planNum，按 Enter 键退出...")
+        raise ValueError("CaseConfig.json 缺少 Paras_nsga.planNum")
     try:
         planNum = int(planNum)
     except (TypeError, ValueError):
-        input("Error: CaseConfig.json 中的 planNum 不是有效整数，按 Enter 键退出...")
+        input("Error: CaseConfig.json 中的 Paras_nsga.planNum 不是有效整数，按 Enter 键退出...")
         raise ValueError(f"Invalid planNum: {planNum}")
     # 用一个数据结构存储XLD的planNum个方案，其中每个方案都有t和q两个数组，且数组长度与XLD_KeyP中的t数组长度相同
     XLD_Plan = []
@@ -636,8 +636,9 @@ except json.JSONDecodeError as e:
     print(f"Error decoding JSON: {e}")
 
 run_in_platform = str(case_config.get('run_in_platform', '')).strip() == '1'
+nsga_config = case_config.get('Paras_nsga', {})
 
-max_gen = case_config.get('max_gen', 200)
+max_gen = nsga_config.get('max_gen', 200)
 if max_gen in ('', None):
     max_gen = 200
 else:
@@ -777,7 +778,10 @@ P_plans_XLD = XLD_Plan
 # 生成NSGA-III参考点
 from nsga3_utils import generate_reference_points
 n_objectives = obj.shape[1]  # 从obj数组的列数自动获取目标函数数量
-n_divisions = 4   # 可以根据需要调整，数值越大参考点越多
+n_divisions = nsga_config.get('n_divisions')   #一般设置为4
+if n_divisions in ('', None):
+    raise ValueError("CaseConfig.json 缺少 Paras_nsga.n_divisions")
+n_divisions = int(n_divisions)        
 reference_points = generate_reference_points(n_objectives, n_divisions)
 
 # 将P_plans_SMX, P_plans_XLD, obj, generation的数据保存入一个名为PopHistory.json的文件中
@@ -809,7 +813,7 @@ while generation <= max_gen:
         print(f"第{generation}代")
 
     with progress_spinner(progress_text, enabled=run_in_platform):
-        Q_plans_SMX, Q_plans_XLD = generate_offspring(P_plans_SMX, P_plans_XLD, ConstraintViolation)
+        Q_plans_SMX, Q_plans_XLD = generate_offspring(P_plans_SMX, P_plans_XLD, ConstraintViolation, nsga_config)
 
         # ------------------------------评估子代--------------------------------
         for i in range(planNum):

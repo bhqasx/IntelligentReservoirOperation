@@ -2,7 +2,12 @@
   "run_in_platform": 1,
   "iniWL_XLD": 252.15,
   "iniWL_SMX": 313.86,
-  "planNum": 15,
   "exe_directory": "D:/服务器计算结果/2R20_17_server_TP/1D_RiverNet_OCTC",
-  "max_gen": 9
+  "Paras_nsga": {
+    "n_divisions": 4,
+    "max_gen": 9,
+    "planNum": 15,
+    "mu": 10,
+    "mutation_rate": 0.2
+  }
 }

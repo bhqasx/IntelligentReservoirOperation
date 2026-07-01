@@ -288,7 +288,7 @@ def mutate_plan(offspring, mutation_rate, eta, max_time, max_flow, reservoir_id)
                         offspring['q'][j] = offspring['q'][j-1]
     return offspring
 
-def generate_offspring(P_plans_SMX, P_plans_XLD, CV):
+def generate_offspring(P_plans_SMX, P_plans_XLD, CV, nsga_config):
     """
     生成子代种群
     
@@ -301,12 +301,18 @@ def generate_offspring(P_plans_SMX, P_plans_XLD, CV):
     Q_plans_SMX: 子代SMX方案
     Q_plans_XLD: 子代XLD方案
     """
-    mu = 10    #越小探索性越强，一般默认10-20
+    mu = nsga_config.get('mu')
+    if mu in ('', None):
+        raise ValueError("CaseConfig.json 缺少 Paras_nsga.mu")
+    mu = float(mu)
     max_t = 2500 + 48     # 以小浪底结束时间为基准设置
     max_q_smx = 10974
     max_q_xld = 13311
     # 变异参数
-    mutation_rate = 0.2
+    mutation_rate = nsga_config.get('mutation_rate')
+    if mutation_rate in ('', None):
+        raise ValueError("CaseConfig.json 缺少 Paras_nsga.mutation_rate")
+    mutation_rate = float(mutation_rate)
     eta_m = 20 #越大变异越小，常见默认20
     pop_size = len(P_plans_SMX)
 
