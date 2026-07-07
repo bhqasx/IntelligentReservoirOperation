@@ -53,10 +53,23 @@ def run_simulation(argument, exe_directory, test=False, run_in_platform=False):
             # 正常模式：运行完整模拟
             cmd = [os.path.join(exe_directory, executable), argument]
             platform_print(f"运行命令: {' '.join(cmd)}", run_in_platform=run_in_platform)
-            result = subprocess.run(cmd, 
-                                  cwd=exe_directory,  # 设置工作目录
-                                  creationflags=subprocess.CREATE_NEW_CONSOLE,  # 创建新的控制台窗口
-                                  check=True)
+            creationflags = 0
+            startupinfo = None
+            if run_in_platform:
+                creationflags = subprocess.CREATE_NO_WINDOW
+                startupinfo = subprocess.STARTUPINFO()
+                startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+                startupinfo.wShowWindow = subprocess.SW_HIDE
+            else:
+                creationflags = subprocess.CREATE_NEW_CONSOLE
+
+            result = subprocess.run(
+                cmd,
+                cwd=exe_directory,
+                creationflags=creationflags,
+                startupinfo=startupinfo,
+                check=True,
+            )
             return f"Process for {argument} completed successfully."
     except subprocess.TimeoutExpired:
         # 测试模式下，超时是正常的，因为我们手动终止了程序
