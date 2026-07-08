@@ -182,8 +182,10 @@ def crossover(parent_1, parent_2, mu, max_time, max_flow, reservoir_id):
     """
     offspring = copy.deepcopy(parent_1)
     
-    # 对时间序列进行交叉（除了固定的时间点）
-    for j in range(1, len(parent_1['t']) - 1):  # 避免交叉第一个和最后一个时间点
+    # 对时间序列进行交叉。
+    # XLD 的最后一个时间点是固定终点，不参与交叉；SMX 的最后一个时间点需要参与，避免其落后于倒数第二个时间点。
+    time_stop = len(parent_1['t']) if reservoir_id == 1 else len(parent_1['t']) - 1
+    for j in range(1, time_stop):
         if parent_1['t'][j] is not None and parent_2['t'][j] is not None:
             # 将下界设为offspring中前一个时间，确保非递减
             prev_t = offspring['t'][j-1]
@@ -251,9 +253,11 @@ def polynomial_mutation_variable(x, eta, x_min, x_max, mutation_rate):
 
 # 对方案进行变异：时间与流量分别按边界约束变异
 def mutate_plan(offspring, mutation_rate, eta, max_time, max_flow, reservoir_id):
-    # 变异时间（保持非递减，首尾不变）
+    # 变异时间。
+    # XLD 的最后一个时间点保持固定；SMX 的最后一个时间点参与变异并保持不小于前一个时间点。
     if 't' in offspring and offspring['t'] is not None:
-        for j in range(1, len(offspring['t']) - 1):
+        time_stop = len(offspring['t']) if reservoir_id == 1 else len(offspring['t']) - 1
+        for j in range(1, time_stop):
             if offspring['t'][j] is not None:
                 prev_t = offspring['t'][j - 1]
                 min_time = 0 if prev_t is None else prev_t
