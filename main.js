@@ -270,13 +270,23 @@ window.onload = async function() {
     const configResponse = await fetch('ModelCongfig.json', { cache: 'no-store' });
     if (configResponse.ok) {
       const modelConfig = await configResponse.json();
-      if (Number(modelConfig.run_in_platform) === 1 && String(modelConfig.CurrentCasePath ?? '').trim() !== '') {
-        projectFolder = normalizeProjectFolder(modelConfig.CurrentCasePath);
-        useConfiguredCasePath = true;
+      const currentCasePath = normalizeProjectFolder(modelConfig.CurrentCasePath);
+
+      if (currentCasePath !== "") {
+        const caseConfigResponse = await fetch(currentCasePath + 'CaseConfig.json', { cache: 'no-store' });
+        if (caseConfigResponse.ok) {
+          const caseConfig = await caseConfigResponse.json();
+          if (Number(caseConfig.run_in_platform) === 1) {
+            projectFolder = currentCasePath;
+            useConfiguredCasePath = true;
+          }
+        } else {
+          console.warn('读取案例配置失败，将继续弹出文件夹选择窗口。', currentCasePath + 'CaseConfig.json');
+        }
       }
     }
   } catch (error) {
-    console.warn('读取 ModelCongfig.json 失败，将继续弹出文件夹选择窗口。', error);
+    console.warn('读取 ModelCongfig.json 或对应的 CaseConfig.json 失败，将继续弹出文件夹选择窗口。', error);
   }
 
   if (!useConfiguredCasePath) {
