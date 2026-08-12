@@ -256,58 +256,74 @@ function normalizeProjectFolder(pathValue) {
   return normalizedPath;
 }
 
+async function fetchCaseJson(fileName) {
+  const filePath = withProjectPath(fileName);
+  const response = await fetch(filePath, { cache: 'no-store' });
+  if (!response.ok) {
+    throw new Error(`无法读取文件 ${filePath}，HTTP ${response.status}`);
+  }
+  return response.json();
+}
+
+function ensureCurrentCasePathBanner() {
+  let banner = document.getElementById('currentCasePathBanner');
+  if (!banner) {
+    banner = document.createElement('div');
+    banner.id = 'currentCasePathBanner';
+    banner.style.position = 'fixed';
+    banner.style.left = '0';
+    banner.style.right = '0';
+    banner.style.bottom = '0';
+    banner.style.zIndex = '9999';
+    banner.style.padding = '8px 12px';
+    banner.style.background = 'rgba(255, 255, 255, 0.95)';
+    banner.style.borderTop = '1px solid #ccc';
+    banner.style.fontSize = '14px';
+    banner.style.color = '#333';
+    banner.style.boxShadow = '0 -2px 6px rgba(0, 0, 0, 0.08)';
+    document.body.appendChild(banner);
+  }
+  return banner;
+}
+
+function updateCurrentCasePathBanner(currentCasePath) {
+  const banner = ensureCurrentCasePathBanner();
+  const displayValue = currentCasePath ? currentCasePath : '未设置';
+  banner.textContent = `ModelCongfig.CurrentCasePath: ${displayValue}`;
+}
+
 // 新增：用于真正写入用户选择的目录（Chrome/Edge）
 let saveDirHandle = null;
 
 window.onload = async function() {
   //弹出一个提示框
   //alert('这是第2版');
-  
-  // 提示用户选择项目文件夹（赋值给顶层变量，避免作用域断开）
-  let useConfiguredCasePath = false;
+  updateCurrentCasePathBanner('未设置');
 
   try {
     const configResponse = await fetch('ModelCongfig.json', { cache: 'no-store' });
     if (configResponse.ok) {
       const modelConfig = await configResponse.json();
       const currentCasePath = normalizeProjectFolder(modelConfig.CurrentCasePath);
+      updateCurrentCasePathBanner(currentCasePath);
 
       if (currentCasePath !== "") {
+        projectFolder = currentCasePath;
+
         const caseConfigResponse = await fetch(currentCasePath + 'CaseConfig.json', { cache: 'no-store' });
-        if (caseConfigResponse.ok) {
-          const caseConfig = await caseConfigResponse.json();
-          if (Number(caseConfig.run_in_platform) === 1) {
-            projectFolder = currentCasePath;
-            useConfiguredCasePath = true;
-          }
-        } else {
-          console.warn('读取案例配置失败，将继续弹出文件夹选择窗口。', currentCasePath + 'CaseConfig.json');
+        if (!caseConfigResponse.ok) {
+          console.warn('读取案例配置失败，但仍将继续使用当前案例目录读取数据文件。', currentCasePath + 'CaseConfig.json');
         }
       }
     }
   } catch (error) {
-    console.warn('读取 ModelCongfig.json 或对应的 CaseConfig.json 失败，将继续弹出文件夹选择窗口。', error);
-  }
-
-  if (!useConfiguredCasePath) {
-    /** @type {string} */
-    projectFolder = (typeof prompt === 'function'
-      ? prompt("请输入项目文件夹路径 (例如: Optimize/, 留空则默认为当前目录):", "")
-      : ""
-    ) ?? "";
+    console.warn('读取 ModelCongfig.json 失败，将继续使用默认相对路径读取数据文件。', error);
   }
 
   projectFolder = normalizeProjectFolder(projectFolder);
 
   // Fetch the JSON data for Xiaolangdi
-  fetch(withProjectPath('Xiaolangdi.json'), { cache: 'no-store' })
-    .then(response => {
-      if (!response.ok) {
-        alert("无法找到文件: " + withProjectPath('Xiaolangdi.json') + "\n请检查项目文件夹路径是否正确。");
-        throw new Error("HTTP error " + response.status);
-      }
-      return response.json();
-    })
+  fetchCaseJson('Xiaolangdi.json')
     .then(data => {
       XLD = data;
       // Get the first chart area
@@ -375,11 +391,14 @@ window.onload = async function() {
           }
         }
       });
+    })
+    .catch(error => {
+      alert("无法读取文件: " + withProjectPath('Xiaolangdi.json') + "\n请检查 ModelCongfig.json 中的 CurrentCasePath 是否正确。");
+      console.error('读取 Xiaolangdi.json 失败:', error);
     });
   
   // Fetch the JSON data for Sanmenxia
-  fetch(withProjectPath('Sanmenxia.json'), { cache: 'no-store' })
-    .then(response => response.json())
+  fetchCaseJson('Sanmenxia.json')
     .then(data => {
       SMX = data;
       // Get the second chart area
@@ -447,6 +466,10 @@ window.onload = async function() {
           }
         }
       });
+    })
+    .catch(error => {
+      alert("无法读取文件: " + withProjectPath('Sanmenxia.json') + "\n请检查 ModelCongfig.json 中的 CurrentCasePath 是否正确。");
+      console.error('读取 Sanmenxia.json 失败:', error);
     });
 
   //处理表格输入
