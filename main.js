@@ -8,6 +8,9 @@ var WlFldContr_XLD;
 var WlReg_XLD;
 var volWatSupply;
 let chart1, chart2;
+let iniWL_XLD = null;
+let iniWL_SMX = null;
+let smxTimeDebugLines = [];
 
 
 
@@ -141,13 +144,26 @@ function CalculateT(volTarg, tt, qq, iLastKeyP, iReservoir, dischargeMod) {
         var q2 = q1;
         var dt = 6;
         var stop_flag = 0;
+        var maxSMXT = tt[tt.length - 1];
+        resetSMXTimeDebugLog();
+        appendSMXTimeDebugLog(t2, vol * 3600 / 10 ** 8);
         while (stop_flag === 0) {
-            t2 = t2 + dt;
-            q2 = interpolate(tt, qq, t2);
-            vol -= dt * (q2 + q1) / 2;
-            vol += dt * SMX_q[iLastKeyP - 1];
-            t1 = t2;
-            q1 = q2;
+          t2 = t2 + dt;
+          appendSMXTimeDebugLog(t2, vol * 3600 / 10 ** 8);
+          if (t2 > maxSMXT) {
+            saveTextToFile(getSMXTimeDebugText(), 'SMX_time_debug.txt').catch(error => {
+              console.error('保存三门峡调试日志失败:', error);
+            });
+            alert('三门峡时间计算失败');
+            stop_flag = 1;
+            throw new Error('三门峡时间计算失败');
+          }
+          q2 = interpolate(tt, qq, t2);
+          vol -= dt * (q2 + q1) / 2;
+          vol += dt * SMX_q[iLastKeyP - 1];
+          t1 = t2;
+          q1 = q2;
+          appendSMXTimeDebugLog(t2, vol * 3600 / 10 ** 8);
 
             if (iLastKeyP === 5) {
                 if (vol * 3600 / 10 ** 8 < volTarg) {
@@ -236,12 +252,23 @@ function CalculateRefillT(volChange, tt, qq, ttNat, qqNat, tCtrl, qCtrl) {
     vol_out += (tCtrl[j] - tCtrl[j - 1]) * (qCtrl[j] + qCtrl[j - 1]) / 2;
   }
   vol_out = volChange * 10 **8 / 3600 + vol_in - vol_out;
+  if (vol_out < 0) {
+    alert('小浪底回蓄开始计算中vol_out<0');
+  }
   var tPre = tCtrl[iPre - 1];
   var qPre = qCtrl[iPre - 1];
   var qCurrent = qCtrl[iPre];
   var tNext = tCtrl[iPre + 2];
   var qNext = (qCtrl[iPre + 2] + qCtrl[iPre + 1]) / 2;
   //求解vol_out = (t - tPre) * (qPre + qCurrent) / 2 + (tNext - t) * qNext
+  //先估算能够达到的vol_out的最大值，即令上式中t=tNext
+  var vol_out_max = (tNext - tPre) * (qPre + qCurrent) / 2;
+  //再估算能够达到的vol_out的最小值，即令上式中t=tPre
+  var vol_out_min = (tNext - tPre) * qNext;
+  //若超出上下限，则弹窗提示
+  if (vol_out > vol_out_max || vol_out < vol_out_min) {
+    alert('小浪底回蓄开始计算中vol_out超出上下限');
+  } 
   t = (vol_out + (qCurrent + qPre) * tPre / 2 - qNext * tNext) / ((qCurrent + qPre) /2 - qNext); 
 
   return t;
@@ -292,6 +319,39 @@ function updateCurrentCasePathBanner(currentCasePath) {
   banner.textContent = `ModelCongfig.CurrentCasePath: ${displayValue}`;
 }
 
+function getInitialWaterLevel(series, configuredValue) {
+  return Number.isFinite(configuredValue) ? configuredValue : series[0];
+}
+
+function resetSMXTimeDebugLog() {
+  smxTimeDebugLines = [];
+}
+
+function appendSMXTimeDebugLog(t2, vol) {
+  smxTimeDebugLines.push(`t2=${t2}, vol=${vol}`);
+}
+
+function getSMXTimeDebugText() {
+  return smxTimeDebugLines.join('\r\n');
+}
+
+function validateSMXFloodControlWaterLevel() {
+  var floodControlInput = document.getElementById('WL-FloodControl-SMX');
+  if (!floodControlInput || floodControlInput.value === '' || !Array.isArray(SMX["WaterLevel"]) || SMX["WaterLevel"].length === 0) {
+    return;
+  }
+
+  var floodControlLevel = Number(floodControlInput.value);
+  var observedFinalWaterLevel = Number(SMX["WaterLevel"][SMX["WaterLevel"].length - 1]);
+  if (Number.isNaN(floodControlLevel) || Number.isNaN(observedFinalWaterLevel)) {
+    return;
+  }
+
+  if (floodControlLevel > observedFinalWaterLevel) {
+    alert('实测过程三门峡期末水位低于输入的汛限水位');
+  }
+}
+
 // 新增：用于真正写入用户选择的目录（Chrome/Edge）
 let saveDirHandle = null;
 
@@ -313,6 +373,10 @@ window.onload = async function() {
         const caseConfigResponse = await fetch(currentCasePath + 'CaseConfig.json', { cache: 'no-store' });
         if (!caseConfigResponse.ok) {
           console.warn('读取案例配置失败，但仍将继续使用当前案例目录读取数据文件。', currentCasePath + 'CaseConfig.json');
+        } else {
+          const caseConfig = await caseConfigResponse.json();
+          iniWL_XLD = Number.isFinite(caseConfig.iniWL_XLD) ? caseConfig.iniWL_XLD : Number(caseConfig.iniWL_XLD);
+          iniWL_SMX = Number.isFinite(caseConfig.iniWL_SMX) ? caseConfig.iniWL_SMX : Number(caseConfig.iniWL_SMX);
         }
       }
     }
@@ -518,8 +582,15 @@ window.onload = async function() {
   var table = document.getElementsByClassName('table2')[0];
   var inputsQ_SMX = table.getElementsByClassName('input-q');
   var inputsT_SMX = table.getElementsByClassName('input-t');
+  var smxFloodControlInput = document.getElementById('WL-FloodControl-SMX');
   //令inputsT[0]的文本框边框颜色变为红色
   inputsT[0].style.borderColor = 'red';
+
+  if (smxFloodControlInput) {
+    smxFloodControlInput.addEventListener('blur', function () {
+      validateSMXFloodControlWaterLevel();
+    });
+  }
 
   inputsT[0].addEventListener('blur', function () {
     if (this.value !== '') {
@@ -568,7 +639,7 @@ window.onload = async function() {
       //计算现有水量
       var xx = XLD.CapCurve.WL;
       var yy = XLD.CapCurve.Vol;
-      var x = XLD["WaterLevel"][0];
+      var x = getInitialWaterLevel(XLD["WaterLevel"], iniWL_XLD);
       var VolIni = interpolate(xx, yy, x);      //调用interpolate函数
       //读取id为WL-FloodControl的input的值
       WlFldContr_XLD = document.getElementById('WL-FloodControl').value;
@@ -596,7 +667,7 @@ window.onload = async function() {
       } else {
         var xx = XLD.CapCurve.WL;
         var yy = XLD.CapCurve.Vol;
-        var x = XLD["WaterLevel"][0];
+        var x = getInitialWaterLevel(XLD["WaterLevel"], iniWL_XLD);
         var VolIni = interpolate(xx, yy, x);      //调用interpolate函数                
         var Vol_StartReg = interpolate(xx, yy, WlReg_XLD);
         var netOutflowVol = VolIni - Vol_StartReg;     //净流出水量
@@ -642,7 +713,7 @@ window.onload = async function() {
       } else {
         xx = SMX.CapCurve.WL;
         yy = SMX.CapCurve.Vol;
-        x = SMX["WaterLevel"][0];
+        x = getInitialWaterLevel(SMX["WaterLevel"], iniWL_SMX);
         VolIni = interpolate(xx, yy, x);
         x = document.getElementById('WL-FloodControl-SMX').value;
         var Vol_FldContr_SMX = interpolate(xx, yy, x);
@@ -655,7 +726,7 @@ window.onload = async function() {
       
         var xx = XLD.CapCurve.WL;
         var yy = XLD.CapCurve.Vol;
-        var x = XLD["WaterLevel"][0];
+        var x = getInitialWaterLevel(XLD["WaterLevel"], iniWL_XLD);
         var VolIni = interpolate(xx, yy, x);
         var vol_210 = interpolate(xx, yy, 210);
         var netOutflowVol = VolIni - (vol_210 + Number(volWatSupply));
@@ -781,6 +852,31 @@ async function saveToFile(data, filename) {
   const a = document.createElement('a');
   a.href = url;
   a.download = filename; // 只能是文件名，不能控制保存目录
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+async function saveTextToFile(text, filename) {
+  if (typeof window.showDirectoryPicker === 'function') {
+    try {
+      if (!saveDirHandle) {
+        saveDirHandle = await window.showDirectoryPicker({ mode: 'readwrite' });
+      }
+      const fileHandle = await saveDirHandle.getFileHandle(filename, { create: true });
+      const writable = await fileHandle.createWritable();
+      await writable.write(text);
+      await writable.close();
+      return;
+    } catch (e) {
+      console.warn('写入调试文本失败，改为下载文件。', e);
+    }
+  }
+
+  const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
   a.click();
   URL.revokeObjectURL(url);
 }
