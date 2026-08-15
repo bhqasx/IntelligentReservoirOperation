@@ -353,6 +353,60 @@ def find_file(filename):
     raise FileNotFoundError(f"Could not find {filename} in {initial_plan_folder}, current or parent directory")
 
 
+def get_initial_water_levels(config):
+    iniWL_XLD = config.get('iniWL_XLD', 250.8)
+    if iniWL_XLD in ('', None):
+        iniWL_XLD = 250.8
+    else:
+        iniWL_XLD = float(iniWL_XLD)
+
+    iniWL_SMX = config.get('iniWL_SMX', 318)
+    if iniWL_SMX in ('', None):
+        iniWL_SMX = 318
+    else:
+        iniWL_SMX = float(iniWL_SMX)
+
+    return iniWL_XLD, iniWL_SMX
+
+
+def read_last_value_from_dat(dat_path):
+    with open(dat_path, 'r', encoding='utf-8') as f:
+        lines = [line.strip() for line in f if line.strip()]
+
+    if not lines:
+        raise ValueError(f"文件为空: {dat_path}")
+
+    last_line_parts = lines[-1].split()
+    if not last_line_parts:
+        raise ValueError(f"最后一行为空: {dat_path}")
+
+    return float(last_line_parts[-1])
+
+
+def validate_csinil_initial_levels(exe_directory, iniWL_SMX, iniWL_XLD):
+    input_dir = os.path.join(exe_directory, "Input")
+    checks = [
+        ("CSINIL  1.Dat", iniWL_SMX, "CaseConfig中三门峡初始水位与CSINIL文件中不同"),
+        ("CSINIL  2.Dat", iniWL_XLD, "CaseConfig中小浪底初始水位与CSINIL文件中不同"),
+    ]
+
+    for filename, expected_value, mismatch_message in checks:
+        dat_path = os.path.join(input_dir, filename)
+        try:
+            actual_value = read_last_value_from_dat(dat_path)
+        except (OSError, ValueError) as e:
+            print(f"Error reading {dat_path}: {e}")
+            continue
+
+        if actual_value != expected_value:
+            print(mismatch_message)
+
+
+def load_json_file(file_path):
+    with open(file_path, 'r', encoding='utf-8-sig') as f:
+        return json.load(f)
+
+
 def generate_from_SMX(i, xld_plan, smx_plan):
     global SMX_t_in, SMX_q_in, SMX_HyperPara, SMX_CapCurve, iniVol_SMX
     
@@ -453,20 +507,11 @@ def generate_ini_plans():
     global iniVol_SMX, iniVol_XLD  # 声明为全局变量，供其他函数使用
     global XLD_Plan, SMX_Plan
     
-    iniWL_XLD = case_config.get('iniWL_XLD', 250.8)
-    if iniWL_XLD in ('', None):
-        iniWL_XLD = 250.8
-    else:
-        iniWL_XLD = float(iniWL_XLD)
+    iniWL_XLD, iniWL_SMX = get_initial_water_levels(case_config)
     xx = XLD_CapCurve['WL']
     yy = XLD_CapCurve['Vol']
     iniVol_XLD = interpolate(iniWL_XLD, xx, yy)
 
-    iniWL_SMX = case_config.get('iniWL_SMX', 318)
-    if iniWL_SMX in ('', None):
-        iniWL_SMX = 318
-    else:
-        iniWL_SMX = float(iniWL_SMX)
     xx = SMX_CapCurve['WL']
     yy = SMX_CapCurve['Vol']
     iniVol_SMX = interpolate(iniWL_SMX, xx, yy)
@@ -566,23 +611,21 @@ try:
     xld_file = find_file("Xiaolangdi.json")
     smx_file = find_file("Sanmenxia.json")
 
-    with open(xld_file, 'r') as f:
-        tempData = json.load(f)
-        XLD_CapCurve = {
-            'WL': tempData.get('CapCurve', {}).get('WL', []),
-            'Vol': tempData.get('CapCurve', {}).get('Vol', [])
-        }
-        XLD_t_in = tempData.get('t', [])
-        XLD_q_in = tempData.get('Inflow', [])
+    tempData = load_json_file(xld_file)
+    XLD_CapCurve = {
+        'WL': tempData.get('CapCurve', {}).get('WL', []),
+        'Vol': tempData.get('CapCurve', {}).get('Vol', [])
+    }
+    XLD_t_in = tempData.get('t', [])
+    XLD_q_in = tempData.get('Inflow', [])
 
-    with open(smx_file, 'r') as f:
-        tempData = json.load(f)
-        SMX_CapCurve = {
-            'WL': tempData.get('CapCurve', {}).get('WL', []),
-            'Vol': tempData.get('CapCurve', {}).get('Vol', [])
-        }
-        SMX_t_in = tempData.get('t', [])
-        SMX_q_in = tempData.get('Inflow', [])
+    tempData = load_json_file(smx_file)
+    SMX_CapCurve = {
+        'WL': tempData.get('CapCurve', {}).get('WL', []),
+        'Vol': tempData.get('CapCurve', {}).get('Vol', [])
+    }
+    SMX_t_in = tempData.get('t', [])
+    SMX_q_in = tempData.get('Inflow', [])
 except FileNotFoundError as e:
     print(f"Error: {e}")
 except json.JSONDecodeError as e:
@@ -593,27 +636,25 @@ try:
     xld_file = find_file("XLD_keypoints.json")
     smx_file = find_file("SMX_keypoints.json")
 
-    with open(xld_file, 'r') as f:
-        tempData = json.load(f)
-        XLD_KeyP = {
-            't': tempData.get('t', []),
-            'q': tempData.get('q', [])
-        }
-        XLD_HyperPara = {
-            'WlFldContr': tempData.get('WlFldContr', 0),
-            'WlReg': tempData.get('WlReg', 0),
-            'volWatSupply': tempData.get('volWatSupply', 0)
-        }
+    tempData = load_json_file(xld_file)
+    XLD_KeyP = {
+        't': tempData.get('t', []),
+        'q': tempData.get('q', [])
+    }
+    XLD_HyperPara = {
+        'WlFldContr': tempData.get('WlFldContr', 0),
+        'WlReg': tempData.get('WlReg', 0),
+        'volWatSupply': tempData.get('volWatSupply', 0)
+    }
 
-    with open(smx_file, 'r') as f:
-        tempData = json.load(f)
-        SMX_KeyP = {
-            't': tempData.get('t', []),
-            'q': tempData.get('q', [])
-        }
-        SMX_HyperPara = {
-            'WlFldContr': tempData.get('WlFldContr', 0),
-        }
+    tempData = load_json_file(smx_file)
+    SMX_KeyP = {
+        't': tempData.get('t', []),
+        'q': tempData.get('q', [])
+    }
+    SMX_HyperPara = {
+        'WlFldContr': tempData.get('WlFldContr', 0),
+    }
 
     print("Successfully loaded XLD_keypoints.json and SMX_keypoints.json")
 except FileNotFoundError as e:
@@ -637,6 +678,7 @@ except json.JSONDecodeError as e:
 
 run_in_platform = str(case_config.get('run_in_platform', '')).strip() == '1'
 nsga_config = case_config.get('Paras_nsga', {})
+iniWL_XLD, iniWL_SMX = get_initial_water_levels(case_config)
 
 max_gen = nsga_config.get('max_gen', 200)
 if max_gen in ('', None):
@@ -649,10 +691,8 @@ if StartMode == 1:
     XLD_Plan, SMX_Plan, iniVol_XLD, iniVol_SMX, planNum = generate_ini_plans()
 elif StartMode == 2:
     # 从文件中读取初始方案
-    with open(os.path.join(initial_plan_folder, 'XLD_Plan.json'), 'r') as f:
-        XLD_Plan = json.load(f)
-    with open(os.path.join(initial_plan_folder, 'SMX_Plan.json'), 'r') as f:
-        SMX_Plan = json.load(f)
+    XLD_Plan = load_json_file(os.path.join(initial_plan_folder, 'XLD_Plan.json'))
+    SMX_Plan = load_json_file(os.path.join(initial_plan_folder, 'SMX_Plan.json'))
     planNum = len(XLD_Plan)
 elif StartMode == 3:
     # 提示用户输入代数
@@ -660,13 +700,12 @@ elif StartMode == 3:
     generation = int(generation_to_load)
 
     # 从PopHistory.json中读取指定代数的数据
-    with open(pop_history_path, 'r') as f:
-        data = json.load(f)
-        generation_data = data['generations'][generation_to_load]
-        XLD_Plan = generation_data['P_plans_XLD']
-        SMX_Plan = generation_data['P_plans_SMX']
-        obj = np.array(generation_data['obj'])
-        ConstraintViolation = np.array(generation_data['ConstraintViolation'])
+    data = load_json_file(pop_history_path)
+    generation_data = data['generations'][generation_to_load]
+    XLD_Plan = generation_data['P_plans_XLD']
+    SMX_Plan = generation_data['P_plans_SMX']
+    obj = np.array(generation_data['obj'])
+    ConstraintViolation = np.array(generation_data['ConstraintViolation'])
     
     planNum = len(XLD_Plan)
     print(f"已从第 {generation} 代加载数据，将从第 {generation + 1} 代开始优化。")
@@ -676,6 +715,8 @@ exe_directory = sanitize_path_text(case_config.get('exe_directory'))
 if exe_directory in ('', None):
     input("Error: 未在CaseConfig.json中读取到 exe_directory，按 Enter 键退出...")
     raise ValueError("CaseConfig.json 缺少 exe_directory")
+
+validate_csinil_initial_levels(exe_directory, iniWL_SMX, iniWL_XLD)
 
 # 仅当不是从历史记录恢复时，才运行初始模拟
 if StartMode != 3:
@@ -700,8 +741,7 @@ if StartMode != 3:
     # 将SMX_Plan和XLD_Plan中i号方案的t和q数组写入case{i+1}/Input/ReservoirOutQ.json中对应的Rhid对象的t和q中
     for i in range(planNum):
         file_path = os.path.join(exe_directory, f"case{i+1}", "Input", "ReservoirOutQ.json")
-        with open(file_path, 'r') as f:
-            data = json.load(f)
+        data = load_json_file(file_path)
         
         for resv in data['Resv']:
             if resv['RhId'] == 1:
@@ -818,8 +858,7 @@ while generation <= max_gen:
         # ------------------------------评估子代--------------------------------
         for i in range(planNum):
             file_path = os.path.join(exe_directory, f"case{i+1}", "Input", "ReservoirOutQ.json")
-            with open(file_path, 'r') as f:
-                data = json.load(f)
+            data = load_json_file(file_path)
 
             for resv in data['Resv']:
                 if resv['RhId'] == 1:
@@ -977,8 +1016,7 @@ while generation <= max_gen:
 
         # 读取现有历史数据，并追加新一代数据
         try:
-            with open(pop_history_path, 'r') as f:
-                history_data = json.load(f)
+            history_data = load_json_file(pop_history_path)
         except (FileNotFoundError, json.JSONDecodeError):
             history_data = {'generations': {}}
         

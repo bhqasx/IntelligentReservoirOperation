@@ -5,7 +5,7 @@
   "exe_directory": "D:/服务器计算结果/2R2013/2R2013_1/1D_RiverNet_OCTC",
   "Paras_nsga": {
     "n_divisions": 4,
-    "max_gen": 9,
+    "max_gen": 200,
     "planNum": 15,
     "mu": 10,
     "mutation_rate": 0.2,
