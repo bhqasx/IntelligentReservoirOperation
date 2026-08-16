@@ -11,6 +11,13 @@ global case
 case = [None]  # 0号位置放个None
 
 
+def integrate_trapezoid(y_values, x_values):
+    integrator = getattr(np, 'trapezoid', None)
+    if integrator is not None:
+        return integrator(y_values, x_values)
+    return np.trapz(y_values, x_values)
+
+
 def should_prompt(run_in_platform=False):
     return not bool(run_in_platform)
 
@@ -185,7 +192,7 @@ def evaluate_case(case_number, exe_directory, run_in_platform=False):
         # 计算入库沙量
         qs_in = case[case_number][iReach]["Qin"] * case[case_number][iReach]["SusIn"]
         try:
-            qs_in_integral = np.trapz(qs_in, case[case_number][iReach]["Time"])
+            qs_in_integral = integrate_trapezoid(qs_in, case[case_number][iReach]["Time"])
         except Exception as e:
             platform_print(f"警告: 在 case{case_number} 的 FlowCS {flowcs_num}.txt 中计算入库沙量时发生错误：{e}", run_in_platform=run_in_platform)
             return 0
@@ -193,7 +200,7 @@ def evaluate_case(case_number, exe_directory, run_in_platform=False):
         # 计算出库沙量
         qs_out = case[case_number][iReach]["Qout"] * case[case_number][iReach]["SusOut"]
         try:
-            qs_out_integral = np.trapz(qs_out, case[case_number][iReach]["Time"])
+            qs_out_integral = integrate_trapezoid(qs_out, case[case_number][iReach]["Time"])
         except Exception as e:
             platform_print(f"警告: 在 case{case_number} 的 FlowCS {flowcs_num}.txt 中计算出库沙量时发生错误：{e}", run_in_platform=run_in_platform)
             return 0

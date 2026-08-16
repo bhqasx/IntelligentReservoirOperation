@@ -391,7 +391,7 @@ def resolve_start_options(config, run_in_platform):
 
     resume_generation = parse_optional_int(cli_resume_generation, None)
     if resume_generation is None:
-        resume_generation = parse_optional_int(config.get('resume_generation'), None)
+        resume_generation = parse_optional_int(config.get('resume_generation'), 0)
 
     if (
         not run_in_platform
@@ -876,6 +876,7 @@ run_in_platform = str(case_config.get('run_in_platform', '')).strip() == '1'
 nsga_config = case_config.get('Paras_nsga', {})
 iniWL_XLD, iniWL_SMX = get_initial_water_levels(case_config)
 StartMode, resume_generation = resolve_start_options(case_config, run_in_platform)
+output_case_detail = parse_optional_int(case_config.get('output_case_detail'), 0)
 
 max_gen = nsga_config.get('max_gen', 200)
 if max_gen in ('', None):
@@ -928,8 +929,9 @@ if StartMode != 3:
         case, case_status = run_all_simulations(planNum, exe_directory, test=False, run_in_platform=run_in_platform)
     case_serializable = convert_numpy_to_list(case)
     # 将case中的数据保存为名为PopHistory_Gen{代数}.json的文件
-    filename = get_pop_history_gen_path(generation)
-    save_json_file(filename, {'i_gen': generation, 'case': case_serializable})
+    if output_case_detail != 0:
+        filename = get_pop_history_gen_path(generation)
+        save_json_file(filename, {'i_gen': generation, 'case': case_serializable})
     obj, ConstraintViolation = evaluate_population(case, case_status, planNum)
     history_data['generations'][str(generation)] = build_generation_record(
         SMX_Plan,
@@ -994,10 +996,11 @@ while generation <= max_gen:
         # 运行数值模拟
         case, case_status = run_all_simulations(planNum, exe_directory, test=False, run_in_platform=run_in_platform)
         next_generation = generation + 1
-        save_json_file(
-            get_pop_history_gen_path(next_generation),
-            {'i_gen': next_generation, 'case': convert_numpy_to_list(case)}
-        )
+        if output_case_detail != 0:
+            save_json_file(
+                get_pop_history_gen_path(next_generation),
+                {'i_gen': next_generation, 'case': convert_numpy_to_list(case)}
+            )
 
         Q_obj, Q_ConstraintViolation = evaluate_population(case, case_status, planNum)
 
