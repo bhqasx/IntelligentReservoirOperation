@@ -1,5 +1,7 @@
 {
   "run_in_platform": 0,
+  "start_mode": 3,
+  "resume_generation": 101,
   "iniWL_XLD": 247.38,
   "iniWL_SMX": 317.24,
   "exe_directory": "D:/服务器计算结果/2R2013/2R2013_1/1D_RiverNet_OCTC",
