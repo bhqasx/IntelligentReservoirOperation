@@ -1,0 +1,17 @@
+{
+  "run_in_platform": 0,
+  "start_mode": 1,
+  "resume_generation": 1,
+  "output_case_detail": 0,
+  "iniWL_XLD": 251.97,
+  "iniWL_SMX": 317.06,
+  "exe_directory": "D:/服务器计算结果/2R2005/2R2005_1/1D_RiverNet_OCTC",
+  "Paras_nsga": {
+    "n_divisions": 4,
+    "max_gen": 200,
+    "planNum": 15,
+    "mu": 10,
+    "mutation_rate": 0.2,
+	"comment": "初始水位用了2005调水调沙首日（6/9）日均水位"
+  }
+}
